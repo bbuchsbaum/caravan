@@ -1,6 +1,6 @@
-# Initialize mirai for parade
+# Initialize mirai for caravan
 
-One-step initialization of mirai for use with parade workflows. Sets up
+One-step initialization of mirai for use with caravan workflows. Sets up
 daemons and configures the future plan.
 
 ## Usage
@@ -29,14 +29,12 @@ Invisibly returns the previous future plan
 # \donttest{
 if (requireNamespace("mirai", quietly = TRUE) && 
     requireNamespace("future.mirai", quietly = TRUE)) {
-  # Initialize with default settings
-  mirai_init()
-  
-  # Initialize with 4 daemons
-  mirai_init(n = 4)
-  
-  # Clean up
-  mirai_stop()
+  local({
+    old_plan <- future::plan()
+    on.exit(future::plan(old_plan), add = TRUE)
+    on.exit(mirai_stop(), add = TRUE)
+    mirai_init(n = 2)
+  })
 }
 # }
 ```

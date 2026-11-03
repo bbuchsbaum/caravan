@@ -1,6 +1,6 @@
-# Temporarily set parade options for code execution
+# Temporarily set caravan options for code execution
 
-Temporarily set parade options for code execution
+Temporarily set caravan options for code execution
 
 ## Usage
 
@@ -12,7 +12,7 @@ with_parade_options(..., code)
 
 - ...:
 
-  Named parade option values to set temporarily
+  Named caravan option values to set temporarily
 
 - code:
 

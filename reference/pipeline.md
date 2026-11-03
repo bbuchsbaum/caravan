@@ -1,6 +1,6 @@
-# Create a parade pipeline (alias for flow)
+# Create a caravan pipeline (alias for flow)
 
-Create a parade pipeline (alias for flow)
+Create a caravan pipeline (alias for flow)
 
 ## Usage
 

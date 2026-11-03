@@ -27,7 +27,7 @@ A function suitable for use with `.name_by` parameter
 
 This function masks
 [`digest::digest`](https://eddelbuettel.github.io/digest/man/digest.html)
-when parade is attached. Prefer
+when caravan is attached. Prefer
 [`name_digest()`](https://bbuchsbaum.github.io/parade/reference/name_digest.md)
 as an explicit alias to avoid confusion.
 

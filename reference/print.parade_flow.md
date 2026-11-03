@@ -1,6 +1,6 @@
-# Print method for parade flows
+# Print method for caravan flows
 
-Print method for parade flows
+Print method for caravan flows
 
 ## Usage
 
@@ -28,7 +28,7 @@ The input object (invisibly)
 ``` r
 grid <- data.frame(x = 1:3)
 fl <- flow(grid) |>
-  stage("sq", function(x) x^2, schema = returns(result = dbl()))
+  stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 print(fl)
 #> <parade_flow>
 #>   Grid     : 3 rows × 1 cols [x]

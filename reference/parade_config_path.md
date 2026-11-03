@@ -1,6 +1,6 @@
-# Locate the parade configuration file
+# Locate the caravan configuration file
 
-Finds the appropriate location for the parade configuration file,
+Finds the appropriate location for the caravan configuration file,
 checking environment variables and standard locations.
 
 ## Usage

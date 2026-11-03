@@ -1,6 +1,6 @@
 # Emit a stage lifecycle update from a submitted script
 
-Use this in standalone `Rscript` jobs submitted through parade when you
+Use this in standalone `Rscript` jobs submitted through caravan when you
 want the dashboard to show a clear current stage rather than forcing
 operators to infer progress from stdout/stderr logs.
 

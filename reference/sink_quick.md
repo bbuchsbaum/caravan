@@ -97,16 +97,12 @@ sink_quick("result", write = "rds")
 #> [1] "rds"
 #> 
 #> $writer
-#> function (x, path, compress = "gzip", ...) 
+#> function (x, path, ...) 
 #> {
-#>     dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-#>     if (identical(compress, "gz")) 
-#>         compress <- "gzip"
-#>     saveRDS(x, file = path, compress = compress, ...)
-#>     invisible(path)
+#>     .write_atomic_generic(writer, x, path, ...)
 #> }
-#> <bytecode: 0x562a170ad388>
-#> <environment: 0x562a170b2e48>
+#> <bytecode: 0x6301ca5710b8>
+#> <environment: 0x6301cd0e48d8>
 #> 
 #> $reader
 #> function (file, refhook = NULL) 
@@ -122,7 +118,7 @@ sink_quick("result", write = "rds")
 #>     else stop("bad 'file' argument")
 #>     .Internal(unserializeFromConn(con, refhook))
 #> }
-#> <bytecode: 0x562a0bb5f6f8>
+#> <bytecode: 0x630182108c28>
 #> <environment: namespace:base>
 #> 
 #> $overwrite
@@ -159,8 +155,8 @@ sink_quick("result", write = "rds")
 #>     }
 #>     .sink_safe_join(base_dir, rel_path)
 #> }
-#> <bytecode: 0x562a849e6f58>
-#> <environment: 0x562a7bf0abf0>
+#> <bytecode: 0x6301ca570c58>
+#> <environment: 0x6301cd0e48d8>
 #> 
 #> $compress
 #> [1] "gzip"
@@ -191,15 +187,15 @@ sink_quick("data",
 #> {
 #>     .write_atomic_generic(writer, x, path, ...)
 #> }
-#> <bytecode: 0x562a849e6b30>
-#> <environment: 0x562a7bec0c28>
+#> <bytecode: 0x6301ca5710b8>
+#> <environment: 0x6301cd12a990>
 #> 
 #> $reader
 #> function (file, header = TRUE, sep = ",", quote = "\"", dec = ".", 
 #>     fill = TRUE, comment.char = "", ...) 
 #> read.table(file = file, header = header, sep = sep, quote = quote, 
 #>     dec = dec, fill = fill, comment.char = comment.char, ...)
-#> <bytecode: 0x562a7bec0048>
+#> <bytecode: 0x630190b92020>
 #> <environment: namespace:utils>
 #> 
 #> $overwrite
@@ -236,8 +232,8 @@ sink_quick("data",
 #>     }
 #>     .sink_safe_join(base_dir, rel_path)
 #> }
-#> <bytecode: 0x562a849e6f58>
-#> <environment: 0x562a7bec0c28>
+#> <bytecode: 0x6301ca570c58>
+#> <environment: 0x6301cd12a990>
 #> 
 #> $compress
 #> NULL
@@ -268,8 +264,8 @@ sink_quick("tbl",
 #> {
 #>     .write_atomic_generic(writer, x, path, ...)
 #> }
-#> <bytecode: 0x562a849e6b30>
-#> <environment: 0x562a7be79510>
+#> <bytecode: 0x6301ca5710b8>
+#> <environment: 0x6301cd16ef18>
 #> 
 #> $reader
 #> function (path, ...) 
@@ -277,8 +273,8 @@ sink_quick("tbl",
 #>     .path <- path
 #>     eval(expr, envir = environment())
 #> }
-#> <bytecode: 0x562a7d90ccd0>
-#> <environment: 0x562a7be754a0>
+#> <bytecode: 0x6301ca52c768>
+#> <environment: 0x6301cd174ea8>
 #> 
 #> $overwrite
 #> [1] "skip"
@@ -314,8 +310,8 @@ sink_quick("tbl",
 #>     }
 #>     .sink_safe_join(base_dir, rel_path)
 #> }
-#> <bytecode: 0x562a849e6f58>
-#> <environment: 0x562a7be79510>
+#> <bytecode: 0x6301ca570c58>
+#> <environment: 0x6301cd16ef18>
 #> 
 #> $compress
 #> NULL

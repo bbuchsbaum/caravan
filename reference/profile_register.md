@@ -3,7 +3,7 @@
 Store a resource profile in the registry for reuse across jobs. Profiles
 can be retrieved by name and used as base profiles or referenced by
 string shorthand. Site-specific profiles are supplied by users and
-projects; parade does not embed site names or site resource values.
+projects; caravan does not embed site names or site resource values.
 
 ## Usage
 
@@ -27,9 +27,9 @@ profile_register(name, profile, overwrite = FALSE, persist = FALSE)
 
 - persist:
 
-  Whether to save the profile in the user-managed parade config so it is
-  available in future R sessions. Lists may include package-side safety
-  metadata `whole_node` and `cores_per_node`.
+  Whether to save the profile in the user-managed caravan config so it
+  is available in future R sessions. Lists may include package-side
+  safety metadata `whole_node` and `cores_per_node`.
 
 ## Value
 

@@ -1,7 +1,8 @@
 # Emit a structured event to the run's event log
 
-Appends a single JSONL line. Safe for NFS concurrent appends (POSIX
-atomic for lines \< 4096 bytes). Never fails the pipeline.
+Appends a single JSONL line on a best-effort basis. Concurrent writes to
+a shared file are not guaranteed to be atomic on all filesystems,
+including NFS. Logging errors do not fail the pipeline.
 
 ## Usage
 

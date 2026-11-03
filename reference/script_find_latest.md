@@ -25,5 +25,15 @@ A tibble with registry paths and modification times
 ## Examples
 
 ``` r
-latest_jobs <- script_find_latest(n = 3)
+local({
+  old_paths <- options(parade.paths = NULL)
+  on.exit(options(old_paths), add = TRUE)
+  example_dir <- tempfile("caravan-script-jobs-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(registry = file.path(example_dir, "registry"))
+
+  latest_jobs <- script_find_latest(n = 3)
+})
 ```

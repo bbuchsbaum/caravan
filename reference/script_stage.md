@@ -1,4 +1,4 @@
-# Add a script-based stage to a parade flow
+# Add a script-based stage to a caravan flow
 
 Wraps an external script as a first-class pipeline stage with
 declarative output file templates and automatic parameter wiring. The
@@ -113,7 +113,10 @@ script_stage(
   completion manifest that records `{params} -> {output_paths}` after
   each successful execution. On subsequent runs the manifest is
   consulted first, which allows skipping even when the `produces`
-  template has changed (e.g., after adding a new grid parameter). See
+  template has changed (e.g., after adding a new grid parameter). The
+  existence check does not verify script changes, external input files,
+  or output contents. Callers must invalidate or version cached results
+  when those dependencies change. See
   [`completion_manifest()`](https://bbuchsbaum.github.io/parade/reference/completion_manifest.md),
   [`manifest_adopt()`](https://bbuchsbaum.github.io/parade/reference/manifest_adopt.md),
   [`manifest_clear()`](https://bbuchsbaum.github.io/parade/reference/manifest_clear.md).

@@ -25,7 +25,7 @@ Character vector or named list depending on context
 ## Note
 
 This function is exported as `args()` and will mask
-[`base::args`](https://rdrr.io/r/base/args.html) when parade is
+[`base::args`](https://rdrr.io/r/base/args.html) when caravan is
 attached. Call [`base::args`](https://rdrr.io/r/base/args.html)
 explicitly if you need the base version (e.g., `base::args(lm)`).
 

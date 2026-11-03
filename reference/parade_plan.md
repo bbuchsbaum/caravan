@@ -1,4 +1,4 @@
-# Visualize a parade execution plan
+# Visualize a caravan execution plan
 
 Prints a compact ASCII summary of the stage DAG and execution topology.
 

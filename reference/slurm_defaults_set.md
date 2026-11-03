@@ -25,7 +25,7 @@ slurm_defaults_set(..., .list = NULL, profile = "default", persist = FALSE)
 
 - persist:
 
-  Write to the parade config file if `TRUE`; otherwise update only the
+  Write to the caravan config file if `TRUE`; otherwise update only the
   current R session.
 
 ## Value

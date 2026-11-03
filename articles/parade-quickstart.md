@@ -1,7 +1,7 @@
 # Quickstart: Build and Run a Flow
 
-This quickstart walks you through a minimal Parade pipeline you can run
-on your laptop. It uses local futures and small inputs to finish fast.
+This quickstart walks you through a minimal Caravan pipeline you can run
+on your laptop. It uses local execution and small inputs to finish fast.
 
 ## HPC note (optional)
 
@@ -11,7 +11,7 @@ Two common ways to get set up:
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # One-command helper (recommended on clusters)
 parade_init_hpc(persist = TRUE)
@@ -48,8 +48,9 @@ cat(paste(paths_export(), collapse = "\n"))
 
 ``` r
 
-# install.packages("parade")  # CRAN or dev version if needed
-library(parade)
+# install.packages("remotes")
+# remotes::install_github("bbuchsbaum/parade")
+library(caravan)
 ```
 
 ## 2) Define a grid and a stage
@@ -61,7 +62,7 @@ grid <- data.frame(x = 1:6, group = rep(LETTERS[1:3], each = 2))
 fl <- flow(grid) |>
   stage(
     id = "calc",
-    fn = function(x) x^2,
+    f = function(x) list(result = x^2),
     schema = returns(result = dbl())
   )
 ```
@@ -84,8 +85,8 @@ out <- deferred_collect(d)
 out
 ```
 
-You should see a tibble with the original grid plus the `calc.result`
-column.
+The result includes the original grid, a `calc.result` column, and
+diagnostic columns. Check `.ok` to confirm that each row succeeded.
 
 ## 5) Add a sink (optional)
 
@@ -94,9 +95,9 @@ column.
 # Write results to a temp sink; switch to artifacts:// in real projects
 fl2 <- flow(grid) |>
   stage(
-    "calc", function(x) x^2,
-    schema = returns(result = dbl()),
-    sink = sink_temp(prefix = "quickstart")
+    "calc", function(x) list(result = x^2),
+    schema = returns(result = artifact()),
+    sink = sink_temp(fields = "result", prefix = "quickstart")
   ) |>
   distribute(dist_local(by = "group"))
 
@@ -109,20 +110,20 @@ deferred_collect(d2)
 
 - Overview: concepts, distribution backends, sinks, and ergonomics
   - website:
-    [Overview](https://bbuchsbaum.github.io/parade/articles/articles/parade-overview.md)
+    [Overview](https://bbuchsbaum.github.io/parade/articles/parade-overview.md)
   - R help:
     [`vignette("parade-overview")`](https://bbuchsbaum.github.io/parade/articles/parade-overview.md)
 - Unified API: submit functions/scripts and work with jobsets
   - website: [Unified
-    API](https://bbuchsbaum.github.io/parade/articles/articles/parade-unified-api.md)
+    API](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md)
   - R help:
     [`vignette("parade-unified-api")`](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md)
 - Sinks & Artifacts: formats, manifests, and best practices
   - website: [Sinks &
-    Artifacts](https://bbuchsbaum.github.io/parade/articles/articles/parade-sinks.md)
+    Artifacts](https://bbuchsbaum.github.io/parade/articles/parade-sinks.md)
   - R help:
     [`vignette("parade-sinks")`](https://bbuchsbaum.github.io/parade/articles/parade-sinks.md)
 
 See also: Path management and project setup in [Smart Path
-Management](https://bbuchsbaum.github.io/parade/articles/articles/parade-paths.md)
+Management](https://bbuchsbaum.github.io/parade/articles/parade-paths.md)
 ([`vignette("parade-paths")`](https://bbuchsbaum.github.io/parade/articles/parade-paths.md)).

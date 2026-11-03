@@ -2,14 +2,12 @@
 
 ## Overview
 
-When a parade pipeline runs dozens of chunks on SLURM, failures are
-inevitable: OOM kills arrive silently as signal 9, timeouts leave
-truncated logs, and R errors scatter across registry directories.
-Diagnosing what went wrong used to mean manually navigating
-`parade-registry/script-<hash>/logs/`, guessing whether a failure was
-OOM or timeout, and having no unified view across the run.
+SLURM jobs can fail for several reasons, including memory limits,
+timeouts, and R errors. Caravan provides tools to inspect failures and
+find the relevant logs. Classifications are diagnostic hints; check
+scheduler records and logs before drawing conclusions.
 
-**parade** now provides a cohesive failure diagnosis layer:
+**caravan** now provides a cohesive failure diagnosis layer:
 
 - **[`wtf()`](https://bbuchsbaum.github.io/parade/reference/wtf.md)** –
   a single “what went wrong?” entry point that classifies errors,
@@ -34,18 +32,20 @@ OOM or timeout, and having no unified view across the run.
 
 ## Quick start: diagnosing a failed pipeline
 
-The most common scenario: you submitted a pipeline, some chunks failed,
-and you want to know why.
+For example, after submitting a pipeline, inspect a failed run. The
+stage functions below are placeholders: define them and their schemas
+for your analysis.
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Your pipeline ran and some chunks failed
 grid <- param_grid(subject = sprintf("sub-%02d", 1:48), roi = c("V1", "V2"))
 fl <- flow(grid) |>
-  stage("preproc", preprocess_roi) |>
-  stage("model",   fit_model, schema = returns(result = lst())) |>
+  stage("preproc", preprocess_roi, schema = returns(data = lst())) |>
+  stage("model", fit_model, needs = "preproc",
+        schema = returns(result = lst())) |>
   distribute(dist_slurm(by = "subject", resources = list(mem = "16G", time = "2:00:00")))
 
 d <- submit(fl)
@@ -55,7 +55,7 @@ deferred_await(d, timeout = 7200)
 wtf(d)
 ```
 
-This prints a full failure report:
+A report might look like this (illustrative output):
 
     ================================================================================
     parade failure report
@@ -103,7 +103,7 @@ Every failure is classified into one of eight categories:
 
 | Class | Label | Signal | Example |
 |----|----|----|----|
-| `oom` | OOM | SLURM signal 9, `OUT_OF_MEMORY` state, MaxRSS near ReqMem | Job killed because it used 15.8G against a 16G limit |
+| `oom` | OOM | SLURM `OUT_OF_MEMORY` state | Scheduler reports that a job exceeded its memory allocation |
 | `timeout` | TIMEOUT | SLURM `TIMEOUT` state | Walltime exceeded |
 | `r_error` | ERROR | `.diag` contains `error_message` and `error_class` | `singular matrix`, `file not found` |
 | `r_crash` | CRASH | SLURM says COMPLETED/FAILED but no index file written | R died (segfault) before `saveRDS` |
@@ -111,6 +111,9 @@ Every failure is classified into one of eight categories:
 | `dependency` | DEP | `.diag` status is `"cancelled"` | Upstream stage failed, downstream skipped |
 | `validation` | VALIDATION | `error_class` starts with `parade_` | Schema or contract violation |
 | `unknown` | UNKNOWN | None of the above matched | Manual investigation needed |
+
+A SIGKILL (signal 9) alone does not establish an out-of-memory failure;
+inspect scheduler accounting and logs to determine its cause.
 
 Classification happens automatically inside
 [`wtf()`](https://bbuchsbaum.github.io/parade/reference/wtf.md),
@@ -123,8 +126,8 @@ You can also call the internal classifier directly if needed:
 ``` r
 
 # Classify from SLURM sacct data
-sacct <- parade:::.slurm_sacct_info("12345678")
-cl <- parade:::.classify_failure(diag = NULL, slurm_meta = sacct, source = "missing")
+sacct <- caravan:::.slurm_sacct_info("12345678")
+cl <- caravan:::.classify_failure(diag = NULL, slurm_meta = sacct, source = "missing")
 cl$class   # "oom"
 cl$label   # "OOM"
 cl$detail  # "Killed by SLURM (MaxRSS 15.2G vs ReqMem 16G)"
@@ -134,7 +137,7 @@ cl$suggestion  # "Peak usage was 15.2G against 16G limit. Try: ..."
 ## wtf() methods
 
 [`wtf()`](https://bbuchsbaum.github.io/parade/reference/wtf.md) is an S3
-generic with methods for every parade result type. All methods return a
+generic with methods for every caravan result type. All methods return a
 `parade_failure_report` object (invisibly) and print a formatted report.
 
 ### After collecting results
@@ -316,10 +319,9 @@ captures:
   detail
 
 Events are written via
-[`.event_emit()`](https://bbuchsbaum.github.io/parade/reference/dot-event_emit.md),
-which is wrapped in
-[`tryCatch()`](https://rdrr.io/r/base/conditions.html) so it **never**
-blocks or fails the pipeline. Monitoring is purely advisory.
+[`.event_emit()`](https://bbuchsbaum.github.io/parade/reference/dot-event_emit.md).
+Logging errors do not fail the pipeline; filesystem operations can still
+take time. Monitoring is advisory.
 
 ### Controlling the event store
 
@@ -334,8 +336,10 @@ Or for a single run:
 
 ``` r
 
-with_parade_options(event_store = FALSE, {
-  d <- submit(fl)
+d <- local({
+  old <- options(parade.event_store = FALSE)
+  on.exit(options(old), add = TRUE)
+  submit(fl)
 })
 ```
 
@@ -351,14 +355,14 @@ You can also read them directly:
 ``` r
 
 # Read all events for a run
-events <- parade:::.event_read("a1b2c3d4")
+events <- caravan:::.event_read("a1b2c3d4")
 
 # Filter by type
-failures <- parade:::.event_read("a1b2c3d4",
+failures <- caravan:::.event_read("a1b2c3d4",
   types = c("chunk_failed", "stage_failed"))
 
 # Last 5 events
-recent <- parade:::.event_read("a1b2c3d4", last_n = 5)
+recent <- caravan:::.event_read("a1b2c3d4", last_n = 5)
 ```
 
 ### JSONL format
@@ -373,9 +377,9 @@ object:
 {"timestamp":"2026-02-21T14:45:30.123-0500","event_type":"chunk_failed","severity":"error","source":"chunk","run_id":"a1b2c3d4","chunk_id":7,"error":"singular matrix","stage":"model"}
 ```
 
-The JSONL format is NFS-safe (POSIX atomic appends for lines \< 4096
-bytes), requires no database dependency, and can be inspected with
-standard Unix tools:
+The JSONL event log can be inspected with standard Unix tools.
+Concurrent appends are best effort; the format does not guarantee safe
+writes on NFS or other shared filesystems:
 
 ``` bash
 # Count failures
@@ -441,7 +445,7 @@ pipeline_top(d = d)
 
 The display refreshes every 3 seconds (configurable) and shows:
 
-    parade::pipeline_top  |
+    caravan::pipeline_top  |
 
     Run: a1b2c3d4  Backend: slurm  Submitted: 2026-02-21 14:30
     Elapsed: 0:45:12  By: subject
@@ -548,7 +552,7 @@ Here’s a typical workflow when a pipeline fails on SLURM:
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # 1. Check what ran recently
 run_ls()

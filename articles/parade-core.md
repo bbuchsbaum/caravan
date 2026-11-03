@@ -1,18 +1,16 @@
-# Parade core: declarative flows, types, and execution
+# Caravan core: declarative flows, types, and execution
 
 > Note: Code evaluation is disabled in this vignette to keep builds fast
 > and cluster-agnostic. Copy code into an interactive R session to run
 > locally or on your cluster.
 
-> Requires **parade ≥ 0.6.0** (flow/stage/distribute/collect).
-
 ## Quick Start (5 minutes)
 
-Want to see parade in action? Here’s a complete working example:
+Want to see caravan in action? Here’s a complete working example:
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # 1. Define what varies (3 subjects × 2 conditions = 6 analyses)
 grid <- param_grid(
@@ -35,19 +33,14 @@ workflow <- flow(grid) |>
 # 3. Run it!
 results <- collect(workflow)
 print(results)
-# A tibble: 6 × 4
-#   subject condition score   .ok
-#   <chr>   <chr>     <dbl> <lgl>
-# 1 s01     A          98.2  TRUE
-# 2 s01     B         102.4  TRUE
-# ... (4 more rows)
+# Inspect analyze.score and .ok for each row.
 ```
 
 That’s it! You’ve just run 6 analyses automatically. Read on to
-understand how parade can scale from this simple example to complex,
+understand how caravan can scale from this simple example to complex,
 multi-stage pipelines on HPC clusters.
 
-## Why parade? A simple research scenario
+## Why caravan? A simple research scenario
 
 Imagine you’re analyzing experimental data from multiple participants.
 You need to:
@@ -59,12 +52,12 @@ You need to:
 
 With 20 participants and 3 experimental conditions, that’s 60 separate
 analyses. You could write nested loops, manage file paths manually, and
-hope nothing crashes halfway through. Or you could use **parade** to
+hope nothing crashes halfway through. Or you could use **caravan** to
 declare your workflow once and let it handle the complexity.
 
-## What is parade?
+## What is caravan?
 
-**parade** helps you build reproducible analysis pipelines that can run
+**caravan** helps you build reproducible analysis pipelines that can run
 on everything from your laptop to a computing cluster. Instead of
 writing loops and managing files manually, you:
 
@@ -75,22 +68,19 @@ writing loops and managing files manually, you:
 
 Let’s see how this works with a concrete example.
 
-## Your first parade workflow
+## Your first caravan workflow
 
-> **Reproducibility tip**: When generating synthetic data for examples,
-> always use [`set.seed()`](https://rdrr.io/r/base/Random.html) to
-> ensure outputs remain consistent across runs. In production code, you
-> typically wouldn’t set seeds unless you need reproducible
-> randomization.
+> **Reproducibility tip**: Set a seed when you need reproducible random
+> results. For parallel workflows, use a seed column as shown below.
 
 ### Step 1: Define your parameter space
 
-Every parade workflow starts with a **parameter grid** - a table that
+Every caravan workflow starts with a **parameter grid** - a table that
 defines all the analyses you want to run:
 
 ``` r
 
-library(parade)
+library(caravan)
 library(progressr)  # For progress bars
 
 # Initialize parade's path system for managing artifacts and registries
@@ -115,7 +105,7 @@ print(grid)
 # 6 p03         treatment
 ```
 
-Each row in this grid represents one analysis we need to run. Parade
+Each row in this grid represents one analysis we need to run. Caravan
 will handle all 6 automatically.
 
 ### Step 2: Define your analysis pipeline
@@ -138,8 +128,8 @@ results_flow <- flow(grid) |>
       
       # For this example, we simulate data
       # Use participant/condition as seed components for reproducible but varied data
-      seed_val <- as.numeric(factor(participant)) * 100 + 
-                  as.numeric(factor(condition))
+      seed_val <- match(participant, c("p01", "p02", "p03")) * 100 +
+                  match(condition, c("control", "treatment"))
       set.seed(seed_val)
       
       n_trials <- 100
@@ -168,7 +158,7 @@ process each row of our grid -
 **[`stage()`](https://bbuchsbaum.github.io/parade/reference/stage.md)**
 adds a computational step to the workflow - **`id`** gives the stage a
 name so other stages can reference it - **`f`** is the function that
-does the actual work - **`schema`** tells parade what kind of data this
+does the actual work - **`schema`** tells caravan what kind of data this
 stage produces
 
 ### Step 3: Add analysis stages
@@ -224,21 +214,13 @@ Now we run the entire workflow:
 results <- collect(results_flow)
 
 print(results)
-# A tibble: 6 × 7
-#   participant condition mean_rt  sd_rt accuracy n_trials  .ok
-#   <chr>       <chr>       <dbl>  <dbl>    <dbl>    <int> <lgl>
-# 1 p01         control      498.   48.2     0.79      100 TRUE
-# 2 p01         treatment    451.   51.3     0.91      100 TRUE
-# 3 p02         control      502.   49.8     0.81      100 TRUE
-# 4 p02         treatment    449.   50.1     0.88      100 TRUE
-# 5 p03         control      499.   52.1     0.80      100 TRUE
-# 6 p03         treatment    448.   47.9     0.92      100 TRUE
+# Inspect the analyze.* columns and .ok for each row.
 ```
 
 The results include: - Our original parameters (`participant`,
-`condition`) - The outputs from our analysis stage (`mean_rt`, `sd_rt`,
-`accuracy`, `n_trials`) - A `.ok` column indicating whether each row
-succeeded
+`condition`) - The outputs from our analysis stage (`analyze.mean_rt`,
+`analyze.sd_rt`, `analyze.accuracy`, `analyze.n_trials`) - A `.ok`
+column indicating whether each row succeeded
 
 ## Understanding schemas and types
 
@@ -249,7 +231,7 @@ purposes:
 
 ``` r
 
-# This will fail immediately if your function returns the wrong type
+# The stage fails during execution if the returned type is wrong
 stage(
   id = "bad_stage",
   f = function() {
@@ -259,10 +241,10 @@ stage(
 )
 ```
 
-### 2. Memory optimization
+### 2. Output validation
 
-Parade pre-allocates memory based on your schemas, making execution more
-efficient.
+Schemas check stage outputs against the declared types when validation
+is enabled.
 
 ### 3. Documentation
 
@@ -293,16 +275,16 @@ So far, our workflow runs sequentially. Let’s make it parallel:
 
 ``` r
 
-# Run with parallel workers
-results_parallel <- collect(
-  results_flow, 
-  engine = "future",  # Use parallel execution
-  workers = 3         # Use 3 parallel workers
-)
+# Set a future plan before collecting an ungrouped flow.
+old_plan <- future::plan()
+future::plan(future::multisession, workers = 3)
+results_parallel <- collect(results_flow, engine = "future")
+future::plan(old_plan)
 ```
 
-Parade automatically distributes the 6 analyses across the 3 workers,
-handling all the complexity of parallel execution for you.
+The future plan controls local workers for this ungrouped flow. Restore
+the previous plan after the run; available cores and scheduling affect
+execution.
 
 ### When to use parallel execution
 
@@ -315,11 +297,11 @@ handling all the complexity of parallel execution for you.
 
 ## Handling failures gracefully
 
-Real analyses sometimes fail. Parade provides several strategies:
+Real analyses sometimes fail. Caravan provides several strategies:
 
 ``` r
 
-# Option 1: Keep failed rows in results (default)
+# Option 1: Keep failed rows in results
 flow_robust <- flow(grid, error = "keep")
 
 # Option 2: Stop on first error (for debugging)
@@ -351,8 +333,8 @@ complex_flow <- flow(grid) |>
           file_path <- sprintf("data/%s_%s.csv", participant, condition)
           
           # For this example, simulate loading data
-          set.seed(as.numeric(factor(participant)) * 100 + 
-                   as.numeric(factor(condition)))
+          set.seed(match(participant, c("p01", "p02", "p03")) * 100 +
+                   match(condition, c("control", "treatment")))
           
           raw_data <- data.frame(
             x = rnorm(100),
@@ -423,14 +405,14 @@ complex_flow <- flow(grid) |>
         schema = returns(summary = lst()))
 ```
 
-Parade automatically figures out the execution order based on
+Caravan automatically figures out the execution order based on
 dependencies.
 
 ## Three ways to write a stage
 
 So far every stage has been an inline `function(...)`. That works great
 for short lambdas, but as logic grows past a few lines the pipe becomes
-hard to read. Parade offers three stage styles — pick the one that fits
+hard to read. Caravan offers three stage styles — pick the one that fits
 your code:
 
 | Style | Best for | How it looks |
@@ -447,7 +429,7 @@ short:
 ``` r
 
 fl <- flow(grid) |>
-  stage("calc", function(x) x^2, schema = returns(result = dbl()))
+  stage("calc", function(x) list(result = x^2), schema = returns(result = dbl()))
 ```
 
 ### `code_stage()` — inline code blocks
@@ -609,21 +591,9 @@ if (all(test_results$.ok)) {
 # 2. Run sequentially for easier debugging
 debug_results <- collect(results_flow, engine = "sequential")
 
-# 3. Check intermediate outputs from specific stages
-stage_outputs <- diagnostics(test_results)
-
-# Examine what the load stage produced for the first row
-print(stage_outputs$load[[1]])  
-# $data
-# A data frame with 100 rows and 5 columns
-
-# Check analyze stage output
-print(stage_outputs$analyze[[1]])
-# $mean_rt
-# [1] 498.2
-# $sd_rt  
-# [1] 48.2
-# ... etc
+# 3. Inspect stage status for each row
+diagnostics(test_results)
+diagnostics(test_results, stage = "analyze")
 
 # 4. Inspect the flow structure
 explain(results_flow)  
@@ -634,8 +604,8 @@ explain(results_flow)
 # 5. Debug a specific failure
 if (!test_results$.ok[1]) {
   # Get detailed error for first row
-  error_info <- diagnostics(test_results, row = 1)
-  print(error_info$.error)  # See exact error message
+  error_info <- diagnostics(test_results)
+  print(error_info[error_info$row == 1, ])
 }
 ```
 
@@ -698,7 +668,7 @@ flow_reproducible <- flow(grid_with_seeds, seed_col = "seed") |>
 # Results will be identical every time you run this
 results1 <- collect(flow_reproducible)
 results2 <- collect(flow_reproducible)
-identical(results1$bootstrap_mean, results2$bootstrap_mean)  # TRUE
+identical(results1$bootstrap.bootstrap_mean, results2$bootstrap.bootstrap_mean)  # TRUE
 ```
 
 ### Pattern 3: Working with complex objects
@@ -714,7 +684,7 @@ model_flow <- flow(grid) |>
     f = function(participant) {
       # Simulate loading participant data
       # In production: data <- read.csv(sprintf("data/%s.csv", participant))
-      set.seed(as.numeric(factor(participant)))
+      set.seed(sum(utf8ToInt(participant)))
       n <- 100
       data <- data.frame(
         x1 = rnorm(n),
@@ -768,12 +738,10 @@ schema = returns(value = dbl())  # Not int()
 
 ``` r
 
-# If you run out of memory with many workers
-results <- collect(flow, workers = 2)  # Reduce worker count
+# Test a smaller input first
+results <- collect(results_flow, limit = 100)
 
-# Or process in batches
-batch1 <- collect(flow[1:100, ])   # First 100 rows
-batch2 <- collect(flow[101:200, ]) # Next 100 rows
+# For batches, construct a flow for each subset of the input grid.
 ```
 
 ### Debugging failed rows
@@ -781,14 +749,14 @@ batch2 <- collect(flow[101:200, ]) # Next 100 rows
 ``` r
 
 # Get detailed information about failures
-results <- collect(flow, error = "keep")
+results <- collect(results_flow)  # Configure error handling in flow(), not collect()
 
 # Which rows failed?
 failed_rows <- results[!results$.ok, ]
 
 # Why did they fail?
 error_details <- diagnostics(results)
-print(error_details$.error)  # See error messages
+print(error_details)  # Inspect stage status and error details
 ```
 
 ## Next steps
@@ -797,7 +765,7 @@ Now that you understand the basics:
 
 1.  **[Paths
     System](https://bbuchsbaum.github.io/parade/articles/parade-paths.md)**:
-    Learn about parade’s URI-based path management system
+    Learn about caravan’s URI-based path management system
 2.  **[Sinks and
     Artifacts](https://bbuchsbaum.github.io/parade/articles/parade-sinks.md)**:
     Save intermediate results to disk automatically
@@ -812,13 +780,14 @@ Now that you understand the basics:
     Run on HPC clusters
 
 Remember: start simple, test with small parameter grids, and gradually
-scale up. Parade grows with your needs - the same code that runs on your
-laptop can scale to a supercomputer with just a configuration change.
+scale up. Caravan grows with your needs - the same code that runs on
+your laptop can scale to a supercomputer with just a configuration
+change.
 
 ## Summary
 
-parade helps you: - **Define once, run many**: Write your analysis once,
-run it across all parameter combinations - **Handle complexity**:
+caravan helps you: - **Define once, run many**: Write your analysis
+once, run it across all parameter combinations - **Handle complexity**:
 Automatically manage dependencies between analysis steps - **Scale
 effortlessly**: From sequential laptop execution to parallel cluster
 computing - **Catch errors early**: Type checking prevents silent

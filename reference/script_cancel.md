@@ -1,6 +1,6 @@
-# Cancel a running SLURM script job
+# Cancel queued or running SLURM script jobs
 
-Cancel a running SLURM script job
+Cancel queued or running SLURM script jobs
 
 ## Usage
 

@@ -4,7 +4,7 @@ These helpers make artifacts discoverable by scanning a directory for
 sink sidecars (e.g., `*.rds.json`) and combining file stats with stored
 metadata.
 
-Scans a directory for Parade sink sidecars (`<artifact>.json`) and
+Scans a directory for Caravan sink sidecars (`<artifact>.json`) and
 returns a tibble that can be filtered/searched.
 
 ## Usage

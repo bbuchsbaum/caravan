@@ -6,7 +6,7 @@
   : Set account for a resource profile
 
 - [`add_stage()`](https://bbuchsbaum.github.io/parade/reference/add_stage.md)
-  : Add a pre-defined stage to a parade flow
+  : Add a pre-defined stage to a caravan flow
 
 - [`args()`](https://bbuchsbaum.github.io/parade/reference/args.md) :
   Auto-detect argument type
@@ -60,13 +60,13 @@
   : Chunk data into groups
 
 - [`code_stage()`](https://bbuchsbaum.github.io/parade/reference/code_stage.md)
-  : Add an inline code block stage to a parade flow
+  : Add an inline code block stage to a caravan flow
 
 - [`collect()`](https://bbuchsbaum.github.io/parade/reference/collect.md)
   : Collect results from all jobs in a jobset
 
 - [`collect(`*`<parade_flow>`*`)`](https://bbuchsbaum.github.io/parade/reference/collect.parade_flow.md)
-  : Execute a parade flow and collect results
+  : Execute a caravan flow and collect results
 
 - [`collect_result()`](https://bbuchsbaum.github.io/parade/reference/collect_result.md)
   : Collect results from a job
@@ -135,7 +135,7 @@
   : Convenience: SLURM distribution from a named profile
 
 - [`distribute()`](https://bbuchsbaum.github.io/parade/reference/distribute.md)
-  : Add distribution settings to a parade flow
+  : Add distribution settings to a caravan flow
 
 - [`dry_run()`](https://bbuchsbaum.github.io/parade/reference/dry_run.md)
   : Dry run job submission
@@ -180,7 +180,7 @@
   : Find log files for a pipeline run
 
 - [`flow()`](https://bbuchsbaum.github.io/parade/reference/flow.md) :
-  Create a parade flow for declarative data processing
+  Create a caravan flow for declarative data processing
 
 - [`flow_control()`](https://bbuchsbaum.github.io/parade/reference/flow_control.md)
   : Combine flow control policies
@@ -294,7 +294,7 @@
   : Get mirai dispatcher status
 
 - [`mirai_init()`](https://bbuchsbaum.github.io/parade/reference/mirai_init.md)
-  : Initialize mirai for parade
+  : Initialize mirai for caravan
 
 - [`mirai_scale()`](https://bbuchsbaum.github.io/parade/reference/mirai_scale.md)
   : Scale mirai daemons
@@ -348,34 +348,34 @@
   : Summarise per-element errors across a packed jobset
 
 - [`parade_config_path()`](https://bbuchsbaum.github.io/parade/reference/parade_config_path.md)
-  : Locate the parade configuration file
+  : Locate the caravan configuration file
 
 - [`parade_config_read()`](https://bbuchsbaum.github.io/parade/reference/parade_config_read.md)
-  : Read parade configuration
+  : Read caravan configuration
 
 - [`parade_config_write()`](https://bbuchsbaum.github.io/parade/reference/parade_config_write.md)
-  : Write parade configuration
+  : Write caravan configuration
 
 - [`parade_dashboard()`](https://bbuchsbaum.github.io/parade/reference/parade_dashboard.md)
-  : Unified dashboard for parade jobs and runs
+  : Unified dashboard for caravan jobs and runs
 
 - [`parade_doctor()`](https://bbuchsbaum.github.io/parade/reference/parade_doctor.md)
-  : Quick setup checks for parade
+  : Quick setup checks for caravan
 
 - [`parade_heartbeat()`](https://bbuchsbaum.github.io/parade/reference/parade_heartbeat.md)
   : Emit a lightweight heartbeat from within a stage function
 
 - [`parade_init_hpc()`](https://bbuchsbaum.github.io/parade/reference/parade_init_hpc.md)
-  : Initialize parade for HPC use
+  : Initialize caravan for HPC use
 
 - [`parade_log()`](https://bbuchsbaum.github.io/parade/reference/parade_log.md)
   : Log a message from within a stage function
 
 - [`parade_options()`](https://bbuchsbaum.github.io/parade/reference/parade_options.md)
-  : Global parade options (get/set)
+  : Global caravan options (get/set)
 
 - [`parade_plan()`](https://bbuchsbaum.github.io/parade/reference/parade_plan.md)
-  : Visualize a parade execution plan
+  : Visualize a caravan execution plan
 
 - [`parade_stage()`](https://bbuchsbaum.github.io/parade/reference/parade_stage.md)
   : Emit a stage lifecycle update from a submitted script
@@ -408,22 +408,22 @@
   : Generate shell exports for the current path configuration
 
 - [`paths_get()`](https://bbuchsbaum.github.io/parade/reference/paths_get.md)
-  : Get current parade path configuration
+  : Get current caravan path configuration
 
 - [`paths_init()`](https://bbuchsbaum.github.io/parade/reference/paths_init.md)
-  : Initialize parade path configuration
+  : Initialize caravan path configuration
 
 - [`paths_set()`](https://bbuchsbaum.github.io/parade/reference/paths_set.md)
-  : Set specific parade paths
+  : Set specific caravan paths
 
 - [`paths_validate()`](https://bbuchsbaum.github.io/parade/reference/paths_validate.md)
-  : Validate parade path configuration
+  : Validate caravan path configuration
 
 - [`pending()`](https://bbuchsbaum.github.io/parade/reference/pending.md)
   : Select pending jobs
 
 - [`pipeline()`](https://bbuchsbaum.github.io/parade/reference/pipeline.md)
-  : Create a parade pipeline (alias for flow)
+  : Create a caravan pipeline (alias for flow)
 
 - [`pipeline_top()`](https://bbuchsbaum.github.io/parade/reference/pipeline_top.md)
   : Enhanced pipeline monitor with event feed
@@ -438,13 +438,13 @@
   : Print method for error policies
 
 - [`print(`*`<parade_flow>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_flow.md)
-  : Print method for parade flows
+  : Print method for caravan flows
 
 - [`print(`*`<parade_flow_control>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_flow_control.md)
   : Print method for flow control policies
 
 - [`print(`*`<parade_job>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_job.md)
-  : Print method for parade job objects
+  : Print method for caravan job objects
 
 - [`print(`*`<parade_jobset>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_jobset.md)
   : Print method for parade_jobset
@@ -459,7 +459,7 @@
   : Print method for resource profiles
 
 - [`print(`*`<parade_script_job>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_script_job.md)
-  : Print method for parade script jobs
+  : Print method for caravan script jobs
 
 - [`print(`*`<param_grid>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.param_grid.md)
   : Print method for parameter grids
@@ -543,7 +543,7 @@
   : Import a run manifest
 
 - [`run_summary()`](https://bbuchsbaum.github.io/parade/reference/run_summary.md)
-  : Summarize a parade run
+  : Summarize a caravan run
 
 - [`running()`](https://bbuchsbaum.github.io/parade/reference/running.md)
   : Select running jobs
@@ -561,7 +561,7 @@
   : Wait for a SLURM script job to complete
 
 - [`script_cancel()`](https://bbuchsbaum.github.io/parade/reference/script_cancel.md)
-  : Cancel a running SLURM script job
+  : Cancel queued or running SLURM script jobs
 
 - [`script_done()`](https://bbuchsbaum.github.io/parade/reference/script_done.md)
   : Check if a SLURM job has completed
@@ -582,7 +582,7 @@
   : Declare script output files
 
 - [`script_stage()`](https://bbuchsbaum.github.io/parade/reference/script_stage.md)
-  : Add a script-based stage to a parade flow
+  : Add a script-based stage to a caravan flow
 
 - [`script_status()`](https://bbuchsbaum.github.io/parade/reference/script_status.md)
   : Get status of a SLURM script job
@@ -642,7 +642,7 @@
   : Set the default SLURM template path
 
 - [`stage()`](https://bbuchsbaum.github.io/parade/reference/stage.md) :
-  Add a processing stage to a parade flow
+  Add a processing stage to a caravan flow
 
 - [`stage_def()`](https://bbuchsbaum.github.io/parade/reference/stage_def.md)
   : Define a reusable stage object
@@ -690,7 +690,7 @@
   : Get or set active registry
 
 - [`with_parade_options()`](https://bbuchsbaum.github.io/parade/reference/with_parade_options.md)
-  : Temporarily set parade options for code execution
+  : Temporarily set caravan options for code execution
 
 - [`write_run_summary()`](https://bbuchsbaum.github.io/parade/reference/write_run_summary.md)
   : Write a run summary report

@@ -53,17 +53,28 @@ The deferred object or run_id (invisibly)
 
 ``` r
 # \donttest{
+local({
+  old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+  on.exit(options(old_options), add = TRUE)
+  example_dir <- tempfile("parade-example-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(profile = "local", quiet = TRUE)
+  paths_set(registry = file.path(example_dir, "registry"),
+            artifacts = file.path(example_dir, "artifacts"))
 grid <- data.frame(x = 1:6, g = rep(1:3, 2))
 fl <- flow(grid) |>
   stage("s", function(x) list(y = x^2), schema = returns(y = dbl())) |>
   distribute(dist_local(by = "g", within = "sequential"))
 d <- submit(fl)
+pipeline_top(d = d, refresh = 1)
+deferred_await(d, timeout = 60)
+})
 #> [parade] submit prune: scanning 3 groups for cached outputs
 #> [parade] submit prune complete in 0.0s (0 pruned, 3 pending)
-pipeline_top(d = d, refresh = 1)
-#> parade::pipeline_top  -
+#> caravan::pipeline_top  -
 #> 
-#> Run: 3649b6bd  Backend: local  Submitted: 2026-08-31 22:13:32.412307
+#> Run: 5e235dd5  Backend: local  Submitted: 2026-11-03 15:32:59.986625
 #> Elapsed: 0:00:01  By: g
 #> Stages: s
 #> 
@@ -86,7 +97,5 @@ pipeline_top(d = d, refresh = 1)
 #> 
 #> (All chunks completed)
 #> 
-unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-unlink("parade.log")
 # }
 ```

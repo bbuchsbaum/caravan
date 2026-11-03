@@ -1,4 +1,4 @@
-# Read the per-chunk error count for a packed parade job
+# Read the per-chunk error count for a packed caravan job
 
 Returns `NA_integer_` for non-packed jobs or when the summary cannot be
 read. Otherwise returns the number of element-level failures recorded in
@@ -14,7 +14,7 @@ the chunk's `summary.rds`.
 
 - x:
 
-  A parade job (script or local) belonging to a packed jobset.
+  A caravan job (script or local) belonging to a packed jobset.
 
 ## Value
 

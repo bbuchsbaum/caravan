@@ -53,7 +53,7 @@ dist_local(
     the next group is launched (work-queue pattern). This is ideal for
     packing a node with processes that each use their own internal
     parallelism (e.g., the script calls `furrr`, `mclapply`, or uses
-    threaded BLAS/OpenMP). Parade does not manage the internal
+    threaded BLAS/OpenMP). Caravan does not manage the internal
     parallelism — the script/function is free to use as many cores as it
     needs.
 
@@ -78,7 +78,7 @@ dist_local(
 - target_jobs:
 
   Integer; the total number of futures to create. Overrides
-  `chunks_per_job` — parade divides groups evenly across this many
+  `chunks_per_job` — caravan divides groups evenly across this many
   futures. Useful when you want a fixed number of parallel units
   regardless of how many groups exist.
 
@@ -93,6 +93,12 @@ dist_local(
   result (if any) is recovered. Useful as a safety net when stage
   functions may leave background processes that prevent clean exit.
   `NULL` (default) means no timeout.
+
+- parallel_opts:
+
+  Named list of GNU Parallel options used only when
+  `within = "parallel"`. Supported entries are `parallel_bin`, `resume`,
+  `joblog`, `tagstring`, `memfree`, and `extra_args`.
 
 ## Value
 

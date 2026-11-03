@@ -1,10 +1,10 @@
-# parade
+# caravan
 
 [![R-CMD-check](https://github.com/bbuchsbaum/parade/actions/workflows/check.yaml/badge.svg)](https://github.com/bbuchsbaum/parade/actions/workflows/check.yaml)
 [![codecov](https://codecov.io/gh/bbuchsbaum/parade/branch/main/graph/badge.svg)](https://codecov.io/gh/bbuchsbaum/parade)
 
 **Declarative parallel dataflow for R** — from laptop to HPC. Define
-*what* to compute, not *how* to loop. Parade builds typed, parallel
+*what* to compute, not *how* to loop. Caravan builds typed, parallel
 workflows; persists large outputs as **artifacts** (sinks); and talks to
 **SLURM** directly (submit, monitor, cancel) so you rarely have to leave
 R.
@@ -12,7 +12,7 @@ R.
 - Website & docs: <https://bbuchsbaum.github.io/parade/>
 - Source: <https://github.com/bbuchsbaum/parade>
 
-> **Why parade?** Clean, composable pipelines with explicit types and
+> **Why caravan?** Clean, composable pipelines with explicit types and
 > lazily persisted outputs, plus first-class HPC ergonomics (portable
 > paths, SLURM defaults, live monitoring).
 
@@ -25,14 +25,13 @@ R.
 remotes::install_github("bbuchsbaum/parade")
 ```
 
-Note: The CRAN package named `parade` is unrelated (economic “income
-parades”). This project is currently GitHub-only.
+Previously named parade, caravan is currently available from GitHub.
 
 ## 60-second tour
 
 ``` r
 
-library(parade)
+library(caravan)
 library(progressr)
 handlers(global = TRUE)   # progress bars everywhere
 
@@ -46,8 +45,10 @@ fl <- flow(grid) |>
   stage(
     id = "fit",
     f = function(subject, session) {
-      model <- lm(rnorm(1000) ~ rnorm(1000))
-      list(model = model, rmse = runif(1))
+      predictor <- rnorm(1000)
+      response <- 2 * predictor + rnorm(1000)
+      model <- lm(response ~ predictor)
+      list(model = model, rmse = sqrt(mean(residuals(model)^2)))
     },
     schema = schema(model = artifact(), rmse = dbl()),   # big → artifact, small → memory
     sink   = sink_spec(fields = "model",
@@ -55,14 +56,14 @@ fl <- flow(grid) |>
                        template = "{.stage}/{subject}/ses{session}-{.row_key}")
   )
 
-# Execute locally or with futures/mirai/SLURM
-res <- collect(fl, engine = "future", workers = 4)
+# Execute locally
+res <- collect(fl, engine = "sequential")
 
-res$model[[1]]   # file-ref (path, bytes, sha256, written/existed)
-res$rmse         # numeric in-memory
+res$fit.model[[1]]  # file-ref (path, bytes, sha256, written/existed)
+res$fit.rmse        # numeric in-memory
 ```
 
-- **Artifacts (sinks)** keep memory tiny and runs resumable — see the
+- **Artifacts (sinks)** store selected outputs on disk — see the
   [Artifacts
   vignette](https://bbuchsbaum.github.io/parade/articles/parade-artifacts.html).
 - **Portable paths** like `artifacts://` resolve to scratch on HPC or
@@ -124,11 +125,13 @@ balancing, and optional SSH/TLS transport.
 
 ``` r
 
-# Local: spin up 8 daemon workers on this machine.
+# Local: spin up 2 daemon workers on this machine.
 # The dispatcher feeds tasks to whichever worker is free next.
-fl |>
-  distribute(dist_mirai(n = 8, dispatcher = TRUE)) |>
-  collect()
+handle <- fl |>
+  distribute(dist_mirai(n = 2, dispatcher = TRUE)) |>
+  submit()
+deferred_await(handle, timeout = 60)
+res <- deferred_collect(handle)
 
 # HPC: launch 32 daemon workers as SLURM jobs.
 # Each worker is a persistent R process that pulls work from the dispatcher,
@@ -145,7 +148,7 @@ for patterns and tradeoffs.
 ## Portable paths (laptop ↔︎ HPC without edits)
 
 Hard-coded paths break when you move between your laptop and a cluster.
-Parade solves this with **protocol-style aliases** that resolve to the
+Caravan solves this with **protocol-style aliases** that resolve to the
 right directory on each machine:
 
 ``` r
@@ -180,17 +183,17 @@ artifact_catalog_search(query = "fit")
 
 ## Why not {targets} / {drake} / {furrr}?
 
-Parade is deliberately small and compositional: - Dataframe-shaped param
-grids vs. global DAG caches - Pseudo-typed returns for crisp contracts -
-Built-in sinks for large results - HPC ergonomics: SLURM submission,
-defaults, monitoring, path aliases
+Caravan is deliberately small and compositional: - Dataframe-shaped
+param grids vs. global DAG caches - Pseudo-typed returns for crisp
+contracts - Built-in sinks for large results - HPC ergonomics: SLURM
+submission, defaults, monitoring, path aliases
 
-They play nicely together; parade focuses on elegant, fast
+They play nicely together; caravan focuses on elegant, fast
 fan-out/fan-in.
 
 ## Learn more
 
-- Parade core: flows, stages, schemas →
+- Caravan core: flows, stages, schemas →
   <https://bbuchsbaum.github.io/parade/articles/parade-core.html>
 - Artifacts & sinks →
   <https://bbuchsbaum.github.io/parade/articles/parade-artifacts.html>
@@ -238,7 +241,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Set account for a resource profile
 
 - [`add_stage()`](https://bbuchsbaum.github.io/parade/reference/add_stage.md)
-  : Add a pre-defined stage to a parade flow
+  : Add a pre-defined stage to a caravan flow
 
 - [`args()`](https://bbuchsbaum.github.io/parade/reference/args.md) :
   Auto-detect argument type
@@ -292,13 +295,13 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Chunk data into groups
 
 - [`code_stage()`](https://bbuchsbaum.github.io/parade/reference/code_stage.md)
-  : Add an inline code block stage to a parade flow
+  : Add an inline code block stage to a caravan flow
 
 - [`collect()`](https://bbuchsbaum.github.io/parade/reference/collect.md)
   : Collect results from all jobs in a jobset
 
 - [`collect(`*`<parade_flow>`*`)`](https://bbuchsbaum.github.io/parade/reference/collect.parade_flow.md)
-  : Execute a parade flow and collect results
+  : Execute a caravan flow and collect results
 
 - [`collect_result()`](https://bbuchsbaum.github.io/parade/reference/collect_result.md)
   : Collect results from a job
@@ -367,7 +370,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Convenience: SLURM distribution from a named profile
 
 - [`distribute()`](https://bbuchsbaum.github.io/parade/reference/distribute.md)
-  : Add distribution settings to a parade flow
+  : Add distribution settings to a caravan flow
 
 - [`dry_run()`](https://bbuchsbaum.github.io/parade/reference/dry_run.md)
   : Dry run job submission
@@ -412,7 +415,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Find log files for a pipeline run
 
 - [`flow()`](https://bbuchsbaum.github.io/parade/reference/flow.md) :
-  Create a parade flow for declarative data processing
+  Create a caravan flow for declarative data processing
 
 - [`flow_control()`](https://bbuchsbaum.github.io/parade/reference/flow_control.md)
   : Combine flow control policies
@@ -526,7 +529,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Get mirai dispatcher status
 
 - [`mirai_init()`](https://bbuchsbaum.github.io/parade/reference/mirai_init.md)
-  : Initialize mirai for parade
+  : Initialize mirai for caravan
 
 - [`mirai_scale()`](https://bbuchsbaum.github.io/parade/reference/mirai_scale.md)
   : Scale mirai daemons
@@ -580,34 +583,34 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Summarise per-element errors across a packed jobset
 
 - [`parade_config_path()`](https://bbuchsbaum.github.io/parade/reference/parade_config_path.md)
-  : Locate the parade configuration file
+  : Locate the caravan configuration file
 
 - [`parade_config_read()`](https://bbuchsbaum.github.io/parade/reference/parade_config_read.md)
-  : Read parade configuration
+  : Read caravan configuration
 
 - [`parade_config_write()`](https://bbuchsbaum.github.io/parade/reference/parade_config_write.md)
-  : Write parade configuration
+  : Write caravan configuration
 
 - [`parade_dashboard()`](https://bbuchsbaum.github.io/parade/reference/parade_dashboard.md)
-  : Unified dashboard for parade jobs and runs
+  : Unified dashboard for caravan jobs and runs
 
 - [`parade_doctor()`](https://bbuchsbaum.github.io/parade/reference/parade_doctor.md)
-  : Quick setup checks for parade
+  : Quick setup checks for caravan
 
 - [`parade_heartbeat()`](https://bbuchsbaum.github.io/parade/reference/parade_heartbeat.md)
   : Emit a lightweight heartbeat from within a stage function
 
 - [`parade_init_hpc()`](https://bbuchsbaum.github.io/parade/reference/parade_init_hpc.md)
-  : Initialize parade for HPC use
+  : Initialize caravan for HPC use
 
 - [`parade_log()`](https://bbuchsbaum.github.io/parade/reference/parade_log.md)
   : Log a message from within a stage function
 
 - [`parade_options()`](https://bbuchsbaum.github.io/parade/reference/parade_options.md)
-  : Global parade options (get/set)
+  : Global caravan options (get/set)
 
 - [`parade_plan()`](https://bbuchsbaum.github.io/parade/reference/parade_plan.md)
-  : Visualize a parade execution plan
+  : Visualize a caravan execution plan
 
 - [`parade_stage()`](https://bbuchsbaum.github.io/parade/reference/parade_stage.md)
   : Emit a stage lifecycle update from a submitted script
@@ -640,22 +643,22 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Generate shell exports for the current path configuration
 
 - [`paths_get()`](https://bbuchsbaum.github.io/parade/reference/paths_get.md)
-  : Get current parade path configuration
+  : Get current caravan path configuration
 
 - [`paths_init()`](https://bbuchsbaum.github.io/parade/reference/paths_init.md)
-  : Initialize parade path configuration
+  : Initialize caravan path configuration
 
 - [`paths_set()`](https://bbuchsbaum.github.io/parade/reference/paths_set.md)
-  : Set specific parade paths
+  : Set specific caravan paths
 
 - [`paths_validate()`](https://bbuchsbaum.github.io/parade/reference/paths_validate.md)
-  : Validate parade path configuration
+  : Validate caravan path configuration
 
 - [`pending()`](https://bbuchsbaum.github.io/parade/reference/pending.md)
   : Select pending jobs
 
 - [`pipeline()`](https://bbuchsbaum.github.io/parade/reference/pipeline.md)
-  : Create a parade pipeline (alias for flow)
+  : Create a caravan pipeline (alias for flow)
 
 - [`pipeline_top()`](https://bbuchsbaum.github.io/parade/reference/pipeline_top.md)
   : Enhanced pipeline monitor with event feed
@@ -670,13 +673,13 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Print method for error policies
 
 - [`print(`*`<parade_flow>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_flow.md)
-  : Print method for parade flows
+  : Print method for caravan flows
 
 - [`print(`*`<parade_flow_control>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_flow_control.md)
   : Print method for flow control policies
 
 - [`print(`*`<parade_job>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_job.md)
-  : Print method for parade job objects
+  : Print method for caravan job objects
 
 - [`print(`*`<parade_jobset>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_jobset.md)
   : Print method for parade_jobset
@@ -691,7 +694,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Print method for resource profiles
 
 - [`print(`*`<parade_script_job>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.parade_script_job.md)
-  : Print method for parade script jobs
+  : Print method for caravan script jobs
 
 - [`print(`*`<param_grid>`*`)`](https://bbuchsbaum.github.io/parade/reference/print.param_grid.md)
   : Print method for parameter grids
@@ -775,7 +778,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Import a run manifest
 
 - [`run_summary()`](https://bbuchsbaum.github.io/parade/reference/run_summary.md)
-  : Summarize a parade run
+  : Summarize a caravan run
 
 - [`running()`](https://bbuchsbaum.github.io/parade/reference/running.md)
   : Select running jobs
@@ -793,7 +796,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Wait for a SLURM script job to complete
 
 - [`script_cancel()`](https://bbuchsbaum.github.io/parade/reference/script_cancel.md)
-  : Cancel a running SLURM script job
+  : Cancel queued or running SLURM script jobs
 
 - [`script_done()`](https://bbuchsbaum.github.io/parade/reference/script_done.md)
   : Check if a SLURM job has completed
@@ -814,7 +817,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Declare script output files
 
 - [`script_stage()`](https://bbuchsbaum.github.io/parade/reference/script_stage.md)
-  : Add a script-based stage to a parade flow
+  : Add a script-based stage to a caravan flow
 
 - [`script_status()`](https://bbuchsbaum.github.io/parade/reference/script_status.md)
   : Get status of a SLURM script job
@@ -874,7 +877,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Set the default SLURM template path
 
 - [`stage()`](https://bbuchsbaum.github.io/parade/reference/stage.md) :
-  Add a processing stage to a parade flow
+  Add a processing stage to a caravan flow
 
 - [`stage_def()`](https://bbuchsbaum.github.io/parade/reference/stage_def.md)
   : Define a reusable stage object
@@ -922,7 +925,7 @@ on CRAN and GitHub Pages. The palette family is provided via
   : Get or set active registry
 
 - [`with_parade_options()`](https://bbuchsbaum.github.io/parade/reference/with_parade_options.md)
-  : Temporarily set parade options for code execution
+  : Temporarily set caravan options for code execution
 
 - [`write_run_summary()`](https://bbuchsbaum.github.io/parade/reference/write_run_summary.md)
   : Write a run summary report
@@ -936,7 +939,7 @@ on CRAN and GitHub Pages. The palette family is provided via
 
 Orientation and a 5-minute first pipeline
 
-- [Overview: Parade in 10
+- [Overview: Caravan in 10
   Minutes](https://bbuchsbaum.github.io/parade/articles/parade-overview.md):
 - [Quickstart: Build and Run a
   Flow](https://bbuchsbaum.github.io/parade/articles/parade-quickstart.md):
@@ -945,7 +948,7 @@ Orientation and a 5-minute first pipeline
 
 - [Unified API: Functions and Scripts, One
   Surface](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md):
-- [Parade core: declarative flows, types, and
+- [Caravan core: declarative flows, types, and
   execution](https://bbuchsbaum.github.io/parade/articles/parade-core.md):
 - [Smart Path Management: Write Once, Run
   Anywhere](https://bbuchsbaum.github.io/parade/articles/parade-paths.md):
@@ -957,7 +960,7 @@ Orientation and a 5-minute first pipeline
 - [Mirai backend: fast, scalable parallel
   execution](https://bbuchsbaum.github.io/parade/articles/parade-mirai.md):
 - [Using SLURM Defaults in
-  parade](https://bbuchsbaum.github.io/parade/articles/parade-defaults.md):
+  caravan](https://bbuchsbaum.github.io/parade/articles/parade-defaults.md):
 - [SLURM Profiles: One Size Doesn't Fit All
   Jobs](https://bbuchsbaum.github.io/parade/articles/parade-defaults-profiles.md):
 

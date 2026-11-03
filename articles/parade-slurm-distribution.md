@@ -1,14 +1,12 @@
 # Distribution: local and SLURM (barriers, throttling, chunking)
 
-> Requires **parade ≥ 0.6.0**.
-
 > Note: Code evaluation is disabled to keep builds fast and avoid
 > submitting jobs during checks. Copy code into an interactive session
 > to run on your local machine or SLURM cluster.
 
-## Introduction to distributed computing with parade
+## Introduction to distributed computing with caravan
 
-**parade** separates the **workflow definition** (DAG) from the
+**caravan** separates the **workflow definition** (DAG) from the
 **execution strategy** (distribution plan), allowing you to run the same
 computational pipeline locally for development or on SLURM clusters for
 production. This separation enables:
@@ -22,7 +20,7 @@ production. This separation enables:
 - **Flexible chunking**: Balance job granularity and scheduling
   efficiency
 
-The key insight is that parade workflows are *portable* - you define
+The key insight is that caravan workflows are *portable* - you define
 your computation once and choose how to distribute it based on your
 current needs.
 
@@ -33,7 +31,7 @@ On a cluster, it’s tempting to think in terms of a single machine with
 abstraction for arbitrary batch jobs; it schedules jobs that *request
 resources*.
 
-**parade** doesn’t yet implement a true “SLURM pool” (single
+**caravan** doesn’t yet implement a true “SLURM pool” (single
 allocation + dispatcher / work-stealing queue), but you can get close
 today using:
 
@@ -77,7 +75,7 @@ is a convenience wrapper around
 for this common scenario: **“I have N nodes with M cores each — fill
 them up.”** Instead of manually computing `target_jobs`,
 `cpus_per_task`, and `workers_within`, you describe the allocation shape
-and parade derives the rest:
+and caravan derives the rest:
 
 ``` r
 
@@ -108,11 +106,11 @@ fl <- fl |>
   ))
 ```
 
-By default `target_jobs = nodes`, so parade creates one SLURM job per
+By default `target_jobs = nodes`, so caravan creates one SLURM job per
 node and packs groups evenly across them. Setting `target_jobs` higher
-(e.g., `nodes * 2`) oversubscribes: parade creates more jobs than nodes,
-so when fast jobs finish early, waiting jobs backfill immediately —
-reducing tail latency from uneven task durations.
+(e.g., `nodes * 2`) oversubscribes: caravan creates more jobs than
+nodes, so when fast jobs finish early, waiting jobs backfill immediately
+— reducing tail latency from uneven task durations.
 
 **When to use which helper:**
 
@@ -131,7 +129,7 @@ backend can reduce tail latency further.
 
 Dynamic scheduling means: “workers pull the next unit of work when they
 finish the last one.” On SLURM, that usually implies a persistent pool
-of workers behind a queue/dispatcher. In parade, the closest options
+of workers behind a queue/dispatcher. In caravan, the closest options
 today are:
 
 - `dist_mirai(..., dispatcher = TRUE)`: low-latency, load-balanced
@@ -140,8 +138,8 @@ today are:
   (local or cluster).
 
 A dedicated “SLURM pool” backend (one allocation + dispatcher + task
-queue) is intentionally not in parade yet, but the submit backend system
-is designed to support it in a follow-on package.
+queue) is intentionally not in caravan yet, but the submit backend
+system is designed to support it in a follow-on package.
 
 ## Local vs. SLURM distribution strategies
 
@@ -172,7 +170,7 @@ the full grid and illustrates local parallelism.
 
 ``` r
 
-library(parade)
+library(caravan)
 library(progressr)
 
 # Initialize project structure
@@ -248,91 +246,98 @@ The `by` parameter controls how your parameter grid is partitioned:
   - Best for: Independent tasks that benefit from dedicated resources
 - **`by = "subject"`** (barrier groups): Group related parameter
   combinations
-  - Pro: Fewer jobs, shared setup costs, better resource utilization
+  - Pro: Fewer jobs and control over how related rows are scheduled
   - Con: Less parallelization, potential load imbalance
-  - Best for: Tasks that share expensive initialization (data loading,
-    model setup)
+  - Best for: Related rows that should be scheduled together; stage
+    functions still run per row
 
 ## Resource allocation and optimization
 
 ### Understanding the parallelization hierarchy
 
-parade provides two levels of parallelization control:
+caravan provides two levels of parallelization control:
 
 1.  **Job-level parallelization**: How many SLURM jobs to submit
 2.  **Within-job parallelization**: How many tasks run concurrently
     within each job
 
-&nbsp;
+> Tip: If you maintain named resource profiles (via
+> [`slurm_defaults_set()`](https://bbuchsbaum.github.io/parade/reference/slurm_defaults_set.md)
+> or
+> [`profile_register()`](https://bbuchsbaum.github.io/parade/reference/profile_register.md)),
+> you can avoid boilerplate by using the convenience helper
+> [`dist_slurm_profile()`](https://bbuchsbaum.github.io/parade/reference/dist_slurm_profile.md):
+>
+> ``` r
+>
+> fl |> distribute(dist_slurm_profile("standard", by = "subject", workers_within = 8))
+> ```
+>
+> This resolves the profile through
+> [`slurm_resources()`](https://bbuchsbaum.github.io/parade/reference/slurm_resources.md)
+> and fills the `resources` argument of
+> [`dist_slurm()`](https://bbuchsbaum.github.io/parade/reference/dist_slurm.md)
+> for you.
 
+``` r
 
-    > Tip: If you maintain named resource profiles (via `slurm_defaults_set()` or
-    > `profile_register()`), you can avoid boilerplate by using the convenience helper
-    > `dist_slurm_profile()`:
-    >
-    > ```r
-    > fl |> distribute(dist_slurm_profile("standard", by = "subject", workers_within = 8))
-    > ```
-    >
-    > This resolves the profile through `slurm_resources()` and fills the `resources`
-    > argument of `dist_slurm()` for you.
-    r
-    # Example: 24 parameter combinations, grouped by subject (3 subjects × 8 combinations each)
-    grid <- param_grid(
-      subject = c("sub01", "sub02", "sub03"),
-      session = 1:4, 
-      run = 1:2
-    ) # 24 total combinations
+# Example: 24 parameter combinations, grouped by subject (3 subjects × 8 combinations each)
+grid <- param_grid(
+  subject = c("sub01", "sub02", "sub03"),
+  session = 1:4, 
+  run = 1:2
+) # 24 total combinations
 
-    fl <- flow(grid) |> 
-      stage("analyze", 
-        f = function(subject, session, run) {
-          # Simulate expensive computation
-          set.seed(as.numeric(factor(subject)) * 100 + session * 10 + run)
-          
-          # Mock expensive matrix operations
-          n <- 1000
-          X <- matrix(rnorm(n * n), nrow = n)
-          result <- svd(X, nu = 10, nv = 10)  # Partial SVD
-          
-          list(
-            singular_values = result$d[1:10],
-            subject = subject,
-            session = session, 
-            run = run
-          )
-        },
-        schema = returns(
-          singular_values = lst(),
-          subject = chr(),
-          session = int(),
-          run = int()
-        )
+fl <- flow(grid) |> 
+  stage("analyze", 
+    f = function(subject, session, run) {
+      # Simulate expensive computation
+      set.seed(sum(utf8ToInt(subject)) * 100 + session * 10 + run)
+      
+      # Mock expensive matrix operations
+      n <- 1000
+      X <- matrix(rnorm(n * n), nrow = n)
+      result <- svd(X, nu = 10, nv = 10)  # Partial SVD
+      
+      list(
+        singular_values = result$d[1:10],
+        subject = subject,
+        session = session, 
+        run = run
       )
+    },
+    schema = returns(
+      singular_values = lst(),
+      subject = chr(),
+      session = int(),
+      run = int()
+    )
+  )
 
-    # Strategy 1: One job per subject, parallel within
-    fl |> distribute(dist_slurm(
-      by = "subject",                    # 3 jobs (one per subject)
-      workers_within = 8,                # 8 parallel tasks per job
-      chunks_per_job = 1,                # Each subject in one job
-      resources = batch_resources(
-        cpus_per_task = 8,               # Match workers_within
-        time = "4h",
-        mem = "32GB"
-      )
-    ))
+# Strategy 1: One job per subject, parallel within
+fl |> distribute(dist_slurm(
+  by = "subject",                    # 3 jobs (one per subject)
+  workers_within = 8,                # 8 parallel tasks per job
+  chunks_per_job = 1,                # Each subject in one job
+  resources = batch_resources(
+    cpus_per_task = 8,               # Match workers_within
+    time = "4h",
+    mem = "32GB"
+  )
+))
 
-    # Strategy 2: Split large groups across multiple jobs
-    fl |> distribute(dist_slurm(
-      by = "subject",                    # Group by subject first
-      workers_within = 4,                # 4 parallel tasks per job  
-      chunks_per_job = 2,                # Split each subject into 2 jobs
-      resources = batch_resources(       # Results in 6 total jobs (3 subjects × 2)
-        cpus_per_task = 4,               # Match workers_within
-        time = "2h",                     # Shorter time per chunk
-        mem = "16GB"
-      )
-    ))
+# Strategy 2: Combine subject groups into fewer jobs
+fl |> distribute(dist_slurm(
+  by = "subject",                    # Group by subject first
+  workers_within = 4,                # 4 parallel tasks per job
+  chunks_per_job = 2,                # Up to 2 subject groups per job
+  resources = batch_resources(
+    cpus_per_task = 4,               # Match workers_within
+    time = "2h",                     # Shorter time per chunk
+    mem = "16GB"
+  )
+))
+```
 
 ### Throttling concurrent execution
 
@@ -362,10 +367,10 @@ distribute individual *rows* across furrr workers, which conflicts with
 the script’s own parallelism.
 
 Instead, use `within = "callr"` to run each **group** as a fully
-independent R process. Parade maintains a pool of up to `workers_within`
-concurrent processes; when one finishes, the next group is launched
-automatically (work-queue pattern). Each process is free to use as many
-cores as it needs internally — parade doesn’t interfere.
+independent R process. Caravan maintains a pool of up to
+`workers_within` concurrent processes; when one finishes, the next group
+is launched automatically (work-queue pattern). Each process is free to
+use as many cores as it needs internally — caravan doesn’t interfere.
 
 **Example: packing a 196-core node with 20 concurrent analyses**
 
@@ -431,8 +436,9 @@ fl |> distribute(dist_local(
 
 ### Optimizing job granularity
 
-The `chunks_per_job` parameter controls how groups are split across
-SLURM jobs:
+The `chunks_per_job` parameter controls how many groups are combined
+into each SLURM job. To split a large subject group, group by individual
+rows instead:
 
 ``` r
 
@@ -474,8 +480,8 @@ fl <- flow(grid) |>
 
 # Split into smaller chunks for better scheduling
 fl |> distribute(dist_slurm(
-  by = "subject",                    # Group by subject
-  chunks_per_job = 100,              # 100 trials per job → 10 jobs total
+  by = NULL,                         # Each row is a group
+  chunks_per_job = 100,              # 100 rows per job → 10 jobs total
   workers_within = 4,                # 4 parallel trials per job
   resources = batch_resources(
     cpus_per_task = 4,
@@ -501,8 +507,8 @@ fl <- flow(grid) |>
   stage("analyze",
     f = function(subject, condition, session) {
       # Simulate fMRI analysis
-      set.seed(as.numeric(factor(subject)) * 100 + 
-               as.numeric(factor(condition)) * 10 + session)
+      set.seed(sum(utf8ToInt(subject)) * 100 +
+               match(condition, c("rest", "task")) * 10 + session)
       
       # Mock connectivity analysis
       n_regions <- 50
@@ -556,7 +562,7 @@ monitor progress:
 ``` r
 
 # Check job status
-deferred_status(d, show_progress = TRUE)
+deferred_status(d, detail = TRUE)
 
 # Monitor logs in real-time 
 # Use scripts/parade_tail.R for continuous monitoring
@@ -587,13 +593,12 @@ resources <- batch_resources(
   mem = "128GB"
 )
 
-# GPU computing
+# GPU computing: add site-specific GPU directives to your SLURM template
 resources <- batch_resources(
   partition = "gpu",
   nodes = 1,
   ntasks_per_node = 1,
   cpus_per_task = 8,
-  gres = "gpu:1",
   time = "2h",
   mem = "24GB"
 )
@@ -620,7 +625,7 @@ analyze_workflow <- function(grid) {
     stage("preprocess",
       f = function(subject, session) {
         # Simulate preprocessing
-        set.seed(as.numeric(factor(subject)) * 10 + session)
+        set.seed(sum(utf8ToInt(subject)) * 10 + session)
         data <- matrix(rnorm(1000 * 100), nrow = 1000)
         
         # Normalize and filter
@@ -671,10 +676,10 @@ small_fl |> distribute(dist_slurm(
   workers_within = 8         # High parallelism within job
 ))
 
-# Large datasets: split into smaller chunks  
+# Large datasets: group rows into jobs
 large_fl |> distribute(dist_slurm(
-  by = "subject",
-  chunks_per_job = 4,        # Split each subject across 4 jobs
+  by = NULL,
+  chunks_per_job = 4,        # Up to four rows per job
   workers_within = 2         # Lower parallelism per job
 ))
 ```
@@ -692,7 +697,7 @@ dist_slurm(workers_within = 16, resources = batch_resources(mem = "8GB"))
 
 # After: more conservative memory usage
 dist_slurm(workers_within = 4, resources = batch_resources(mem = "8GB"))
-# Now each task gets ~2GB instead of ~512MB
+# The job still shares 8 GB; fewer concurrent workers may reduce peak use.
 ```
 
 ### Problem: Many short jobs overwhelming the scheduler

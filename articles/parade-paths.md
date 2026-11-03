@@ -29,12 +29,12 @@ breaks immediately:
 
 ## The Solution: Portable Path Aliases
 
-**parade** solves this with smart path aliases that automatically adapt
-to any environment:
+**caravan** provides path aliases that you can configure for each
+environment:
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Same code works everywhere
 model <- readRDS(resolve_path("artifacts://models/brain_model.rds"))
@@ -42,7 +42,7 @@ results <- analyze_brain(model)
 saveRDS(results, resolve_path("artifacts://outputs/results.rds"))
 ```
 
-The `artifacts://` prefix is a **portable alias** that parade
+The `artifacts://` prefix is a **portable alias** that caravan
 automatically translates:
 
 - **On your laptop**: → `/var/folders/.../parade-artifacts/`
@@ -52,7 +52,8 @@ automatically translates:
 - **On your collaborator’s machine**: → whatever their appropriate
   storage location is
 
-No more broken paths. No more rewriting code for different systems.
+Configure the alias roots on each system, and ensure that the required
+files are available there.
 
 ## HPC quickstart (recommended)
 
@@ -63,7 +64,7 @@ may not be able to see the files.
 
 The recommended setup is:
 
-1.  Point Parade at **shared scratch** (site-specific).
+1.  Point Caravan at **shared scratch** (site-specific).
 2.  Initialize paths in **HPC mode** (especially on login nodes).
 3.  Run the built-in doctor once to confirm everything is writable.
 
@@ -74,7 +75,7 @@ export PARADE_SCRATCH="/scratch/$USER"   # or your site's shared scratch
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Auto-detects HPC on compute nodes (scheduler vars), and on many login nodes
 # when common scratch variables (SCRATCH/WORK/etc.) are set:
@@ -110,11 +111,11 @@ paths_validate(create = FALSE)
 
 Let’s make a simple analysis portable in three steps:
 
-### Step 1: Initialize parade’s path system
+### Step 1: Initialize caravan’s path system
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Auto-detect your environment and set up paths
 paths_init()
@@ -162,8 +163,8 @@ That’s it! Your code now works on any system without modification.
 
 ## Understanding the Seven Path Aliases
 
-parade provides seven aliases, each designed for a specific type of data
-in your workflow:
+caravan provides seven aliases, each designed for a specific type of
+data in your workflow:
 
 ### Core Data Aliases
 
@@ -190,8 +191,8 @@ write.csv(results, resolve_path("artifacts://results/final_results.csv"))
 ``` r
 
 # Source files, small configuration files
-source("project://R/analysis_functions.R")
-params <- yaml::read_yaml("project://config/params.yaml")
+source(resolve_path("project://R/analysis_functions.R"))
+params <- yaml::read_yaml(resolve_path("project://config/params.yaml"))
 ```
 
 ### System Aliases
@@ -212,7 +213,7 @@ temp_file <- "scratch://temp_processing.rds"
 template <- "registry://templates/my_slurm.tmpl"
 ```
 
-**`config://`** - parade configuration
+**`config://`** - caravan configuration
 
 ``` r
 
@@ -246,16 +247,16 @@ paths_set(
 
 # Your analysis code (unchanged!)
 run_analysis <- function() {
-  data <- readRDS("data://brain_scans.rds")
+  data <- readRDS(resolve_path("data://brain_scans.rds"))
   model <- fit_model(data)
-  saveRDS(model, "artifacts://fitted_model.rds")
+  saveRDS(model, resolve_path("artifacts://fitted_model.rds"))
 }
 
 # In production (HPC cluster) 
 paths_init()
 paths_set(
   data = "/shared/datasets/full_data",     # Full dataset
-  artifacts = "/scratch/$USER/outputs"     # Fast scratch storage
+  artifacts = file.path("/scratch", Sys.getenv("USER"), "outputs")
 )
 
 # Same analysis code still works!
@@ -292,41 +293,37 @@ Different stages of your pipeline need different storage strategies:
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Configure storage for each data type
 paths_init()
 paths_set(
   data = "/shared/readonly/inputs",       # Shared input data
   scratch = Sys.getenv("SLURM_TMPDIR"),  # Fast local SSD
-  artifacts = "/scratch/$USER/outputs"    # Persistent scratch
+  artifacts = file.path("/scratch", Sys.getenv("USER"), "outputs")
 )
 
-# Pipeline uses appropriate storage for each stage
+# Assume process_subject() accepts the loaded list and a temporary file path,
+# and returns a list. Each stage returns fields declared in its schema.
 flow(subjects) |>
-  
-  # Stage 1: Load from shared storage
   stage("load", function(subject) {
-    readRDS(sprintf("data://raw/%s.rds", subject))
-  }) |>
-  
-  # Stage 2: Process using fast local storage
-  stage("process", function(data) {
-    temp_file <- sprintf("scratch://processing_%s.rds", data$id)
-    # ... heavy processing using temp_file ...
-  }) |>
-  
-  # Stage 3: Save results to scratch
-  stage("save", function(results) {
-    saveRDS(results, sprintf("artifacts://final/%s.rds", results$id))
-  })
+    list(data = readRDS(resolve_path(sprintf("data://raw/%s.rds", subject))))
+  }, schema = returns(data = lst())) |>
+  stage("process", function(subject, load.data) {
+    temp_file <- resolve_path(sprintf("scratch://processing_%s.rds", subject))
+    list(processed = process_subject(load.data, temp_file))
+  }, needs = "load", schema = returns(processed = lst())) |>
+  stage("save", function(subject, process.processed) {
+    saveRDS(process.processed, resolve_path(sprintf("artifacts://final/%s.rds", subject)))
+    list(saved = TRUE)
+  }, needs = "process", schema = returns(saved = lgl()))
 ```
 
 ## Configuring for Your HPC System
 
 ### Automatic Detection
 
-parade automatically detects common HPC environments:
+caravan automatically detects common HPC environments:
 
 ``` r
 
@@ -351,14 +348,16 @@ For custom HPC setups, explicitly set your paths:
 
 # Configure once for your HPC system
 paths_set(
-  scratch = "/fast/local/$USER",           # Fast local SSD
-  artifacts = "/lustre/$USER/outputs",     # Parallel filesystem
-  registry = "/lustre/$USER/jobs",         # Shared job storage
+  scratch = file.path("/fast/local", Sys.getenv("USER")),
+  artifacts = file.path("/lustre", Sys.getenv("USER"), "outputs"),
+  registry = file.path("/lustre", Sys.getenv("USER"), "jobs"),
   data = "/projects/shared/datasets"       # Readonly shared data
 )
 
-# Save configuration for future sessions
-paths_set(..., persist = TRUE)
+# Save the current paths in the project configuration for future sessions
+config <- parade_config_read()
+config$paths <- paths_get()
+parade_config_write(config)
 ```
 
 ### Environment Variables
@@ -407,13 +406,13 @@ setup_paths <- function() {
 
 # Organize outputs by analysis phase
 paths_set(
-  artifacts = "/scratch/$USER/project_X"
+  artifacts = file.path("/scratch", Sys.getenv("USER"), "project_X")
 )
 
 # Create structured output directories
 save_results <- function(phase, name, object) {
   path <- sprintf("artifacts://%s/%s.rds", phase, name)
-  saveRDS(object, path)
+  saveRDS(object, resolve_path(path))
 }
 
 # Usage
@@ -511,9 +510,13 @@ paths_set(artifacts = "/tmp/my_outputs")
 
 ### Issue: Different paths on different nodes
 
+Keep registries and artifacts on shared storage when jobs need to
+exchange files. For task-local temporary files only, you can configure
+node-local scratch:
+
 ``` r
 
-# Use node-local storage for better performance
+# Use node-local storage for task-local temporary files
 paths_set(
   scratch = ifelse(
     Sys.getenv("SLURM_TMPDIR") != "",
@@ -529,7 +532,7 @@ paths_set(
 
     ``` r
 
-    library(parade)
+    library(caravan)
     paths_init()
     ```
 
@@ -588,4 +591,4 @@ Now that you understand portable paths, learn about:
 | `data://` | Input data | `read.csv(resolve_path("data://input.csv"))` |
 | `artifacts://` | Outputs | `saveRDS(m, resolve_path("artifacts://model.rds"))` |
 | `scratch://` | Temp files | `"scratch://temp.rds"` |
-| `project://` | Code/config | `source("project://R/utils.R")` |
+| `project://` | Code/config | `source(resolve_path("project://R/utils.R"))` |

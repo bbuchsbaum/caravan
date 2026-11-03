@@ -26,13 +26,16 @@ Current registry path
 
 ``` r
 # \donttest{
-# Get current registry
-use_registry()
-#> Current registry: /tmp/RtmpdVBnuX/parade-registry
-
-# Switch to different registry
-use_registry("~/my_project/jobs")
-#> Created registry: /home/runner/my_project/jobs
-#> Using registry: /home/runner/my_project/jobs
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  example_dir <- tempfile("caravan-registry-")
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  use_registry(example_dir)
+  use_registry()
+})
+#> Created registry: /tmp/RtmpUmpvNB/caravan-registry-19f65d1f53a9
+#> Using registry: /tmp/RtmpUmpvNB/caravan-registry-19f65d1f53a9
+#> Current registry: /tmp/RtmpUmpvNB/caravan-registry-19f65d1f53a9
 # }
 ```

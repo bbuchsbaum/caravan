@@ -1,13 +1,13 @@
-# Using SLURM Defaults in parade
+# Using SLURM Defaults in caravan
 
 ## What are defaults and why use them?
 
-The parade package allows you to set **site/project defaults** for SLURM
-job submission, making your R code portable across different clusters
-and reducing repetitive resource specifications. Instead of specifying
-the same SLURM parameters (partition, memory, CPU count, etc.) in every
-job submission, you can configure them once and reuse them throughout
-your project.
+The caravan package allows you to set **site/project defaults** for
+SLURM job submission, making your R code portable across different
+clusters and reducing repetitive resource specifications. Instead of
+specifying the same SLURM parameters (partition, memory, CPU count,
+etc.) in every job submission, you can configure them once and reuse
+them throughout your project.
 
 Key benefits of using defaults:
 
@@ -27,7 +27,7 @@ R through simple functions.
 
 ``` r
 
-library(parade)
+library(caravan)
 paths_init()
 
 # Set up defaults for your cluster environment
@@ -66,13 +66,13 @@ fields before constructing the `#SBATCH` directives for your SLURM job.
 > ``` r
 >
 > flow(grid) |>
->   stage("analyze", analyze_fn) |>
+>   stage("analyze", analyze_fn, schema = returns(result = dbl())) |>
 >   distribute(dist_slurm(resources = slurm_resources(profile = "standard")))
 > ```
 
 ## Configuration file
 
-Parade searches for configuration files in the following order:
+Caravan searches for configuration files in the following order:
 
 1.  `PARADE_CONFIG` environment variable (exact file path), if set
 2.  `<project>/parade.json`, if present  
@@ -96,8 +96,8 @@ typical defaults for a research cluster:
 }
 ```
 
-Note that `null` in JSON corresponds to `NA` in R, which tells parade to
-omit that parameter entirely from the SLURM submission.
+Note that `null` in JSON corresponds to `NA` in R, which tells caravan
+to omit that parameter entirely from the SLURM submission.
 
 ## Working with defaults programmatically
 

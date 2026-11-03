@@ -62,8 +62,8 @@ A `parade_dist` object for crew execution.
 
 ## Details
 
-This backend schedules parade chunks on a crew controller (local or
-cluster), while keeping parade's chunk execution semantics intact.
+This backend schedules caravan chunks on a crew controller (local or
+cluster), while keeping caravan's chunk execution semantics intact.
 
 ## Examples
 

@@ -1,6 +1,6 @@
-# Write parade configuration
+# Write caravan configuration
 
-Write parade configuration
+Write caravan configuration
 
 ## Usage
 

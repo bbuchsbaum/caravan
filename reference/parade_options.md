@@ -1,4 +1,4 @@
-# Global parade options (get/set)
+# Global caravan options (get/set)
 
 Set once per session to control defaults for
 [`collect()`](https://bbuchsbaum.github.io/parade/reference/collect.md)

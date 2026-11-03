@@ -1,6 +1,6 @@
 # Clear completion manifest for a stage
 
-Deletes the JSONL manifest file for a stage (or all stages).
+Deletes completion-manifest storage for a stage (or all stages).
 
 ## Usage
 

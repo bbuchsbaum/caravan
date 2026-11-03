@@ -31,8 +31,8 @@ retained as attributes and is not passed to the SLURM template.
 ## Details
 
 Profiles may include `whole_node = TRUE` or a positive `cores_per_node`
-value. These fields describe site allocation policy for parade's fan-out
-checks; they are not rendered as `#SBATCH` directives.
+value. These fields describe site allocation policy for caravan's
+fan-out checks; they are not rendered as `#SBATCH` directives.
 
 ## Examples
 

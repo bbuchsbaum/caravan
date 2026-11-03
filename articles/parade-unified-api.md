@@ -1,23 +1,23 @@
 # Unified API: Functions and Scripts, One Surface
 
-This vignette shows how the same Parade ergonomics apply whether you
+This vignette shows how the same Caravan ergonomics apply whether you
 submit a script or a function. You get one mental model and one set of
 verbs.
 
 See also:
 
 - Overview: high-level orientation —
-  [Overview](https://bbuchsbaum.github.io/parade/articles/articles/parade-overview.md)
+  [Overview](https://bbuchsbaum.github.io/parade/articles/parade-overview.md)
 - Quickstart: your first pipeline —
-  [Quickstart](https://bbuchsbaum.github.io/parade/articles/articles/parade-quickstart.md)
+  [Quickstart](https://bbuchsbaum.github.io/parade/articles/parade-quickstart.md)
 - Sinks & Artifacts: robust I/O —
-  [Sinks](https://bbuchsbaum.github.io/parade/articles/articles/parade-sinks.md)
+  [Sinks](https://bbuchsbaum.github.io/parade/articles/parade-sinks.md)
 
 ## Quick start: function first
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Local dev:
 paths_init(quiet = TRUE)

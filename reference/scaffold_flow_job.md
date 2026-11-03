@@ -1,7 +1,7 @@
 # Generate scaffold scripts for SLURM flow execution
 
 Creates a set of helper scripts for submitting, monitoring, and
-collecting results from a parade flow on SLURM systems.
+collecting results from a caravan flow on SLURM systems.
 
 ## Usage
 
@@ -53,10 +53,10 @@ List of created script paths (invisibly)
 flow <- flow(data.frame(x = 1:3))
 scaffold_flow_job(flow, name = "my_job", dir = tempdir())
 #> Created scaffold scripts:
-#>   - /tmp/RtmpdVBnuX/scripts/my_job_submit.R
-#>   - /tmp/RtmpdVBnuX/scripts/my_job_sbatch.sh
-#>   - /tmp/RtmpdVBnuX/scripts/my_job_status.R
-#>   - /tmp/RtmpdVBnuX/scripts/my_job_collect.R
-#>   - /tmp/RtmpdVBnuX/scripts/my_job_cancel.sh
+#>   - /tmp/RtmpUmpvNB/scripts/my_job_submit.R
+#>   - /tmp/RtmpUmpvNB/scripts/my_job_sbatch.sh
+#>   - /tmp/RtmpUmpvNB/scripts/my_job_status.R
+#>   - /tmp/RtmpUmpvNB/scripts/my_job_collect.R
+#>   - /tmp/RtmpUmpvNB/scripts/my_job_cancel.sh
 # }
 ```

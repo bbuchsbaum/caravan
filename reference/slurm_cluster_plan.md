@@ -1,6 +1,6 @@
 # Plan packed chunking for a fixed-size SLURM cluster
 
-Parade cannot (yet) provide a true "SLURM pool" that behaves like a
+Caravan cannot (yet) provide a true "SLURM pool" that behaves like a
 single machine with `nodes * cpus_per_node` cores. However, you can get
 close today by using packed jobs (`slurm_map(.packed = TRUE, ...)`) and
 choosing a chunk size that yields a reasonable number of SLURM jobs.

@@ -1,6 +1,6 @@
-# Set specific parade paths
+# Set specific caravan paths
 
-Set specific parade paths
+Set specific caravan paths
 
 ## Usage
 
@@ -21,5 +21,9 @@ Updated paths list (invisibly)
 ## Examples
 
 ``` r
-paths_set(data = "/custom/data", artifacts = "/tmp/artifacts")
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  paths_set(data = "/custom/data", artifacts = "/tmp/artifacts")
+})
 ```

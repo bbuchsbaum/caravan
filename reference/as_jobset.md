@@ -13,7 +13,7 @@ as_jobset(x, ...)
 
 - x:
 
-  A parade job object, list of jobs, or existing jobset
+  A caravan job object, list of jobs, or existing jobset
 
 - ...:
 

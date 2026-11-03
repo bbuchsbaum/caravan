@@ -12,7 +12,7 @@ job_status(x)
 
 - x:
 
-  A parade job object (parade_job, parade_script_job, or
+  A caravan job object (parade_job, parade_script_job, or
   parade_local_job)
 
 ## Value

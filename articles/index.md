@@ -4,7 +4,7 @@
 
 Orientation and a 5-minute first pipeline
 
-- [Overview: Parade in 10
+- [Overview: Caravan in 10
   Minutes](https://bbuchsbaum.github.io/parade/articles/parade-overview.md):
 - [Quickstart: Build and Run a
   Flow](https://bbuchsbaum.github.io/parade/articles/parade-quickstart.md):
@@ -13,7 +13,7 @@ Orientation and a 5-minute first pipeline
 
 - [Unified API: Functions and Scripts, One
   Surface](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md):
-- [Parade core: declarative flows, types, and
+- [Caravan core: declarative flows, types, and
   execution](https://bbuchsbaum.github.io/parade/articles/parade-core.md):
 - [Smart Path Management: Write Once, Run
   Anywhere](https://bbuchsbaum.github.io/parade/articles/parade-paths.md):
@@ -25,7 +25,7 @@ Orientation and a 5-minute first pipeline
 - [Mirai backend: fast, scalable parallel
   execution](https://bbuchsbaum.github.io/parade/articles/parade-mirai.md):
 - [Using SLURM Defaults in
-  parade](https://bbuchsbaum.github.io/parade/articles/parade-defaults.md):
+  caravan](https://bbuchsbaum.github.io/parade/articles/parade-defaults.md):
 - [SLURM Profiles: One Size Doesn't Fit All
   Jobs](https://bbuchsbaum.github.io/parade/articles/parade-defaults-profiles.md):
 

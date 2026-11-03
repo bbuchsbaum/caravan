@@ -12,7 +12,7 @@ open_logs(job, ...)
 
 - job:
 
-  A parade job object
+  A caravan job object
 
 - ...:
 

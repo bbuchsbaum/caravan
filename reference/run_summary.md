@@ -1,4 +1,4 @@
-# Summarize a parade run
+# Summarize a caravan run
 
 Returns a compact run summary with run-level and stage-level status.
 Works on:

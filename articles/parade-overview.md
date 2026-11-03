@@ -1,11 +1,12 @@
-# Overview: Parade in 10 Minutes
+# Overview: Caravan in 10 Minutes
 
 ## Introduction
 
-Parade is a small framework for building typed, parallel dataflows in R.
-It wraps future/furrr for local parallelism, adds backends for SLURM and
-mirai, and provides a unified, ergonomic interface to submit, monitor,
-and collect results — with optional artifact sinks and typed schemas.
+Caravan is a small framework for building typed, parallel dataflows in
+R. It wraps future/furrr for local parallelism, adds backends for SLURM
+and mirai, and provides a unified, ergonomic interface to submit,
+monitor, and collect results — with optional artifact sinks and typed
+schemas.
 
 ## What you get
 
@@ -26,14 +27,14 @@ and collect results — with optional artifact sinks and typed schemas.
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Grid of inputs
 grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 
 # Define a simple flow with one stage and an explicit return schema
 fl <- flow(grid) |>
-  stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+  stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
   distribute(dist_local(by = "group"))
 
 # Submit for deferred execution (local futures by default)
@@ -80,16 +81,16 @@ development; switch to project paths (`artifacts://`) for production.
 
 - Quickstart: build your first pipeline end-to-end
   - website:
-    [Quickstart](https://bbuchsbaum.github.io/parade/articles/articles/parade-quickstart.md)
+    [Quickstart](https://bbuchsbaum.github.io/parade/articles/parade-quickstart.md)
   - R help:
     [`vignette("parade-quickstart")`](https://bbuchsbaum.github.io/parade/articles/parade-quickstart.md)
 - Unified API: job-centric usage (functions and scripts)
   - website: [Unified
-    API](https://bbuchsbaum.github.io/parade/articles/articles/parade-unified-api.md)
+    API](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md)
   - R help:
     [`vignette("parade-unified-api")`](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md)
 - Sinks & Artifacts: robust I/O and typed schemas
   - website: [Sinks &
-    Artifacts](https://bbuchsbaum.github.io/parade/articles/articles/parade-sinks.md)
+    Artifacts](https://bbuchsbaum.github.io/parade/articles/parade-sinks.md)
   - R help:
     [`vignette("parade-sinks")`](https://bbuchsbaum.github.io/parade/articles/parade-sinks.md)

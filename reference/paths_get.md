@@ -1,6 +1,6 @@
-# Get current parade path configuration
+# Get current caravan path configuration
 
-Get current parade path configuration
+Get current caravan path configuration
 
 ## Usage
 

@@ -1,6 +1,6 @@
-# Initialize parade path configuration
+# Initialize caravan path configuration
 
-Sets up standard directory paths for parade projects, automatically
+Sets up standard directory paths for caravan projects, automatically
 detecting HPC environments and configuring appropriate scratch and data
 directories.
 
@@ -44,7 +44,11 @@ You can override defaults with environment variables such as
 ## Examples
 
 ``` r
-paths_init(profile = "local")
-#> parade paths: project=/home/runner/work/parade/parade/docs/reference; scratch=/tmp/RtmpdVBnuX; data=/home/runner/work/parade/parade/docs/reference/data; artifacts=/tmp/RtmpdVBnuX/parade-artifacts; registry=/tmp/RtmpdVBnuX/parade-registry; config=/home/runner/work/parade/parade/docs/reference/.parade; cache=/home/runner/.cache/R/parade
-paths_init(quiet = TRUE)
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  paths_init(profile = "local")
+  paths_init(quiet = TRUE)
+})
+#> parade paths: project=/home/runner/work/parade/parade/docs/reference; scratch=/tmp/RtmpUmpvNB; data=/home/runner/work/parade/parade/docs/reference/data; artifacts=/tmp/RtmpUmpvNB/parade-artifacts; registry=/tmp/RtmpUmpvNB/parade-registry; config=/home/runner/work/parade/parade/docs/reference/.parade; cache=/home/runner/.cache/R/parade
 ```

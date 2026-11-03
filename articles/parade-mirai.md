@@ -2,17 +2,16 @@
 
 ## Why mirai?
 
-The mirai backend brings several powerful advantages to parade
+The mirai backend brings several powerful advantages to caravan
 workflows:
 
-- **No connection limits**: Scale beyond R’s 125 connection limit
+- **Connections**: Mirai can avoid the usual R connection limit
 - **Low-latency execution**: Persistent daemons with dispatcher for
   minimal overhead
 - **Secure remote execution**: Built-in TLS and SSH tunneling support
 - **HPC compliance**: Launch daemons through SLURM while maintaining
   scheduler policies
-- **Simple local development**: Drop-in replacement for multisession
-  with better performance
+- **Local development**: Run a flow using local daemons
 
 ## Quick Start
 
@@ -23,29 +22,34 @@ multisession backend:
 
 ``` r
 
-library(parade)
+library(caravan)
 
-# Initialize mirai with auto-detected cores
-mirai_init()
-
-# Or use the distribution interface
+# Submit a small flow to two local daemons
+grid <- data.frame(x = 1:4)
 fl <- flow(grid) |>
-  stage("process", function(x) x^2, schema = returns(y = dbl())) |>
-  distribute(use_mirai_local()) |>
-  collect()
+  stage("process", function(x) list(y = x^2), schema = returns(y = dbl())) |>
+  distribute(use_mirai_local(n = 2))
+handle <- submit(fl)
+deferred_await(handle)
+results <- deferred_collect(handle)
+mirai_stop()
+results
 ```
 
-This provides instant parallelism without any configuration, and often
-with better performance than traditional backends for many small tasks.
+Use
+[`submit()`](https://bbuchsbaum.github.io/parade/reference/submit.md) to
+dispatch the flow to the configured mirai backend. `collect(fl)` follows
+the blocking flow path and does not submit to mirai. Both `mirai` and
+`future.mirai` must be installed.
 
 ### Comparison with other backends
 
 | Scenario | Traditional | Mirai | Benefits |
 |----|----|----|----|
-| Many small tasks | [`dist_local()`](https://bbuchsbaum.github.io/parade/reference/dist_local.md) | [`use_mirai_local()`](https://bbuchsbaum.github.io/parade/reference/use_mirai_local.md) | Lower overhead, faster |
-| \>125 workers | Not possible | `dist_mirai(n = 200)` | No connection limits |
+| Many small tasks | [`dist_local()`](https://bbuchsbaum.github.io/parade/reference/dist_local.md) | [`use_mirai_local()`](https://bbuchsbaum.github.io/parade/reference/use_mirai_local.md) | Persistent daemons may reduce overhead |
+| Many workers | Local futures | `dist_mirai(n = 200)` | Avoids the usual R connection limit; resources still apply |
 | Remote execution | Complex setup | [`use_mirai_ssh()`](https://bbuchsbaum.github.io/parade/reference/use_mirai_ssh.md) | Built-in SSH tunneling |
-| HPC clusters | [`dist_slurm()`](https://bbuchsbaum.github.io/parade/reference/dist_slurm.md) | [`use_mirai_slurm()`](https://bbuchsbaum.github.io/parade/reference/use_mirai_slurm.md) | Lower latency, persistent workers |
+| HPC clusters | [`dist_slurm()`](https://bbuchsbaum.github.io/parade/reference/dist_slurm.md) | [`use_mirai_slurm()`](https://bbuchsbaum.github.io/parade/reference/use_mirai_slurm.md) | Persistent workers; check site configuration |
 
 ## Distribution Patterns
 
@@ -67,7 +71,10 @@ dist <- dist_mirai(
 )
 
 # Apply to flow
-fl |> distribute(dist) |> collect()
+handle <- fl |> distribute(dist) |> submit()
+deferred_await(handle)
+results <- deferred_collect(handle)
+mirai_stop()
 ```
 
 ### 2. SLURM-Managed Daemon Pools
@@ -89,17 +96,21 @@ dist <- use_mirai_slurm(
 )
 
 # Submit flow with SLURM daemons
-fl |> 
+handle <- fl |>
   distribute(dist) |>
-  submit()  # Returns immediately
+  submit()
 
 # Monitor status
 deferred_status(handle)
+deferred_await(handle)
 results <- deferred_collect(handle)
+mirai_stop()
 ```
 
-The daemons run as SLURM jobs, ensuring compliance with cluster policies
-while providing low-latency task execution.
+Confirm the configuration with your cluster administrator before
+submitting jobs. In the current implementation,
+`use_mirai_slurm(n = ...)` does not pass `n` to the remote daemon
+launch, so do not rely on it to set the daemon count.
 
 ### 3. SSH Tunneling for Firewalled Clusters
 
@@ -121,7 +132,10 @@ dist <- use_mirai_ssh(
   tunnel = FALSE
 )
 
-fl |> distribute(dist) |> collect()
+handle <- fl |> distribute(dist) |> submit()
+deferred_await(handle)
+results <- deferred_collect(handle)
+mirai_stop()
 ```
 
 SSH tunneling allows secure connections even in restricted network
@@ -171,7 +185,7 @@ mirai_init(n = 4)
 
 # Scale up for intensive processing
 mirai_scale(16)
-results <- collect(heavy_flow)
+results <- collect(heavy_flow)  # Requires a future.mirai plan configured separately
 
 # Scale down when done
 mirai_scale(4)
@@ -208,7 +222,7 @@ dist_mirai(
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Parameter grid with 10,000 combinations
 grid <- expand.grid(
@@ -230,7 +244,10 @@ fl <- flow(grid) |>
   }, schema = returns(mean = dbl(), var = dbl(), ks_p = dbl())) |>
   distribute(dist_mirai(n = 200))  # 200 workers!
 
-results <- collect(fl)
+handle <- submit(fl)
+deferred_await(handle)
+results <- deferred_collect(handle)
+mirai_stop()
 ```
 
 ### Example 2: Remote execution on HPC cluster
@@ -241,7 +258,10 @@ results <- collect(fl)
 fl_dev <- fl |> 
   distribute(use_mirai_local(n = 4))
 
-test_results <- fl_dev |> collect(limit = 100)
+test_handle <- submit(fl_dev)
+deferred_await(test_handle)
+test_results <- deferred_collect(test_handle)
+mirai_stop()
 
 # Production: scale to cluster
 fl_prod <- fl |>
@@ -256,13 +276,14 @@ fl_prod <- fl |>
 handle <- submit(fl_prod)
 
 # Monitor progress
-while (!all(deferred_status(handle)$done)) {
+while (deferred_status(handle)$unresolved > 0) {
   status <- deferred_status(handle)
   print(status)
   Sys.sleep(30)
 }
 
 final_results <- deferred_collect(handle)
+mirai_stop()
 ```
 
 ### Example 3: Cross-platform workflow
@@ -285,9 +306,12 @@ get_distribution <- function() {
 }
 
 # Portable workflow
-fl |> 
+handle <- fl |>
   distribute(get_distribution()) |>
-  collect()
+  submit()
+deferred_await(handle)
+results <- deferred_collect(handle)
+mirai_stop()
 ```
 
 ## Performance Considerations
@@ -298,7 +322,7 @@ fl |>
 |----|----|----|
 | Few large tasks | [`dist_local()`](https://bbuchsbaum.github.io/parade/reference/dist_local.md) or [`dist_slurm()`](https://bbuchsbaum.github.io/parade/reference/dist_slurm.md) | Traditional backends work well |
 | Many small tasks | [`dist_mirai()`](https://bbuchsbaum.github.io/parade/reference/dist_mirai.md) | Lower per-task overhead |
-| \>125 parallel tasks | [`dist_mirai()`](https://bbuchsbaum.github.io/parade/reference/dist_mirai.md) | Only option beyond connection limit |
+| Many parallel tasks | [`dist_mirai()`](https://bbuchsbaum.github.io/parade/reference/dist_mirai.md) | Avoids the usual R connection limit |
 | Need load balancing | `dist_mirai(dispatcher = TRUE)` | Automatic work distribution |
 | Firewalled cluster | `use_mirai_ssh(tunnel = TRUE)` | SSH tunneling support |
 | Require TLS security | `dist_mirai(tls = TRUE)` | Built-in encryption |
@@ -382,22 +406,24 @@ system("squeue -u $USER")
 
 ## Best Practices
 
-1.  **Always cleanup daemons**: Use `stop_on_exit = TRUE` (default) or
-    explicitly call
+1.  **Clean up daemons**: Call
     [`mirai_stop()`](https://bbuchsbaum.github.io/parade/reference/mirai_stop.md)
+    after collection. In the current implementation `stop_on_exit`
+    controls cleanup on
+    [`deferred_cancel()`](https://bbuchsbaum.github.io/parade/reference/deferred_cancel.md),
+    not normal collection. Stopping daemons affects the current mirai
+    session.
 
 2.  **Choose appropriate daemon count**:
 
     - Local: number of cores
-    - Remote: 2-4x number of physical machines
+    - Remote: match workers to allocated resources
     - SLURM: Based on partition limits
 
-3.  **Use TLS for production**: Enable encryption for sensitive data
-
-    ``` r
-
-    dist_mirai(n = 16, tls = TRUE, port = 5555)
-    ```
+3.  **Configure TLS for remote connections**: Confirm encryption and
+    site settings before sending sensitive data. Local daemon submission
+    does not use the `tls` argument. Configure TLS in the remote
+    connection and verify the setup for your site.
 
 4.  **Monitor resource usage**: Track daemon performance
 
@@ -415,7 +441,7 @@ system("squeue -u $USER")
     ``` r
 
     # Development
-    fl |> distribute(use_mirai_local(n = 2)) |> collect(limit = 10)
+    # Build the same stages on a small input grid, then submit locally.
 
     # Production
     fl |> distribute(use_mirai_slurm(n = 64)) |> submit()
@@ -423,13 +449,14 @@ system("squeue -u $USER")
 
 ## Summary
 
-The mirai backend extends parade’s capabilities with:
+The mirai backend extends caravan’s capabilities with:
 
-- **Unlimited parallelism**: No connection limits
+- **Parallelism**: Mirai avoids the usual R connection limit, subject to
+  available resources
 - **Flexible deployment**: Local, SSH, or SLURM
 - **Enhanced security**: TLS and SSH tunneling
-- **Better performance**: Low-latency task execution
-- **Simple interface**: Drop-in replacement for existing backends
+- **Performance**: Persistent daemons can reduce task overhead
+- **Interface**: Configure a backend and submit a flow
 
 Whether you’re developing locally or scaling to hundreds of nodes, mirai
 provides the performance and flexibility needed for modern parallel

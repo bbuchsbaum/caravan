@@ -1,6 +1,6 @@
-# Read parade configuration
+# Read caravan configuration
 
-Read parade configuration
+Read caravan configuration
 
 ## Usage
 

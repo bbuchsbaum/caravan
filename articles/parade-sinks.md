@@ -1,20 +1,17 @@
 # Artifacts: format-agnostic sinks, atomic writes, and manifests
 
-> Requires **parade ≥ 0.12.0** for format-agnostic sinks (≥ 0.6.0 for
-> basic sinks).
-
 ## Before you begin
 
-- New to parade? Start with the
-  [Quickstart](https://bbuchsbaum.github.io/parade/articles/articles/parade-quickstart.md)
+- New to caravan? Start with the
+  [Quickstart](https://bbuchsbaum.github.io/parade/articles/parade-quickstart.md)
   or the
-  [Overview](https://bbuchsbaum.github.io/parade/articles/articles/parade-overview.md).
+  [Overview](https://bbuchsbaum.github.io/parade/articles/parade-overview.md).
 - For job-centric usage (functions/scripts), see the [Unified
-  API](https://bbuchsbaum.github.io/parade/articles/articles/parade-unified-api.md).
+  API](https://bbuchsbaum.github.io/parade/articles/parade-unified-api.md).
 
 ## What are sinks and artifacts?
 
-**Sinks** in parade provide a powerful mechanism for persisting large
+**Sinks** in caravan provide a powerful mechanism for persisting large
 computational results to disk instead of keeping them in memory. When
 your stages produce big objects (models, large datasets, complex
 results), sinks automatically write these to files and return
@@ -28,7 +25,8 @@ lightweight **file references** instead.
   custom formats
 - **Persistence**: Results survive R session crashes and can be accessed
   later
-- **Atomic writes**: Files are written safely without corruption risks
+- **Atomic writes**: Supported formats use atomic writes to reduce the
+  risk of partial files
 - **Metadata tracking**: Optional JSON sidecars with checksums (sha256)
   and byte sizes
 - **Flexible organization**: Configurable directory structures and file
@@ -41,12 +39,11 @@ lightweight **file references** instead.
 | Objects stay in memory | Objects written to disk |
 | Passed directly between stages | File references passed instead |
 | Lost when R session ends | Persist across sessions |
-| Can cause memory issues with large data | Memory-efficient regardless of size |
+| Can cause memory issues with large data | Reduces retained in-memory output |
 | No automatic metadata | Rich metadata (size, checksum, timestamps) |
 
 ## Quick start: sink_quick() for rapid prototyping
 
-New in parade 0.12.0,
 [`sink_quick()`](https://bbuchsbaum.github.io/parade/reference/sink_quick.md)
 provides the fastest way to create sinks:
 
@@ -105,7 +102,7 @@ sink_quick("output",
 
 ## Format-agnostic sinks: beyond RDS
 
-Parade now supports **any file format** through a flexible registry
+Caravan now supports **any file format** through a flexible registry
 system. Choose the optimal format for your use case:
 
 ### Built-in formats
@@ -185,7 +182,7 @@ multi_sink <- sink_spec(
 
 ## 2) Register custom formats
 
-Extend parade with your own formats using the registry system:
+Extend caravan with your own formats using the registry system:
 
 ``` r
 
@@ -299,7 +296,7 @@ grid <- param_grid(
 )
 
 # Multi-format workflow
-fl <- flow(grid, seed_col = "seed") |>
+fl <- flow(grid) |>
   stage("process",
     f = function(subject, session, condition) {
       # Different outputs need different formats
@@ -342,15 +339,17 @@ results <- collect(fl)
 
 ### Automatic loading in downstream stages
 
-With `autoload = TRUE` (default), artifacts load automatically:
+For a single-format sink, `autoload = TRUE` loads artifacts for
+downstream stages. Per-field `formats` disable autoload by default; load
+each file with its corresponding reader, or provide an appropriate
+reader explicitly.
 
 ``` r
 
 fl <- fl |>
   stage("analyze",
     f = function(raw_data, summary, metadata) {
-      # All three artifacts are loaded automatically
-      # in their appropriate formats
+      # This example assumes the inputs were loaded using their format readers.
       combined <- merge_with_metadata(raw_data, metadata)
       enhanced <- enhance_summary(summary, combined)
       list(final = enhanced)
@@ -412,9 +411,10 @@ recent_large <- manifest("artifacts://analysis") |>
 Preserves all R attributes and classes - ❌ R-only, not readable by
 other languages - 📊 Best for: R-specific workflows, complex objects
 
-**QS2 (when available)** - ✅ 3-5x faster than RDS - ✅ 30-50% smaller
-files - ✅ Supports all R objects - ❌ Requires qs2 package - 📊 Best
-for: High-performance R workflows
+**QS2 (when available)** - ✅ Designed for efficient serialization of R
+objects - 📊 Speed, size, and supported object types depend on the data
+and format - ❌ Requires qs2 package - 📊 Best for: High-performance R
+workflows
 
 **Parquet** - ✅ Columnar format, excellent compression - ✅
 Cross-language (Python, Julia, etc.) - ✅ Fast for data frames - ❌ Data
@@ -506,7 +506,7 @@ prod_flow <- flow(full_data) |>
 ## Working with Complex Objects
 
 The [`lst()`](https://bbuchsbaum.github.io/parade/reference/lst.md) type
-is parade’s universal container for complex R objects that don’t fit
+is caravan’s universal container for complex R objects that don’t fit
 into basic types like
 [`dbl()`](https://bbuchsbaum.github.io/parade/reference/dbl.md),
 [`chr()`](https://bbuchsbaum.github.io/parade/reference/chr.md), or
@@ -557,7 +557,7 @@ fl <- flow(subjects) |>
 
 # The brain object maintains all S4 slots, methods, and attributes
 results <- collect(fl)
-first_brain <- results$brain[[1]]  # Full brain volume object
+first_brain <- results$load_brain.brain[[1]]  # Full brain volume object
 class(first_brain)  # "brain_volume" or similar S4 class
 ```
 
@@ -606,7 +606,7 @@ fl <- flow(subjects) |>
 5.  **Memory considerations**: Keep large data as artifacts, metadata as
     [`lst()`](https://bbuchsbaum.github.io/parade/reference/lst.md)
 
-## Flexible Type Validation (New in 0.13.0)
+## Flexible Type Validation
 
 While [`lst()`](https://bbuchsbaum.github.io/parade/reference/lst.md)
 accepts any object, you often want to validate that complex objects have
@@ -696,7 +696,7 @@ results_validated <- collect(fl, validate = "full")  # Run all checks
 
 ### Domain-specific helpers
 
-Parade includes neuroimaging-specific validators:
+Caravan includes neuroimaging-specific validators:
 
 ``` r
 
@@ -733,7 +733,7 @@ results <- collect(flow, validate = "full")
 
 ### Combining with traditional types
 
-Flexible types work seamlessly with parade’s standard types:
+Flexible types work seamlessly with caravan’s standard types:
 
 ``` r
 
@@ -755,7 +755,7 @@ schema(
 ## Managing Multi-File Outputs
 
 Many analysis pipelines, especially in neuroimaging and bioinformatics,
-generate multiple output files. Parade offers three clean patterns to
+generate multiple output files. Caravan offers three clean patterns to
 handle these scenarios without tracking every file.
 
 ### Pattern A: Sentinel File (Recommended)
@@ -818,7 +818,7 @@ sentinel_sink <- sink_quick(
   },
   read = ~ jsonlite::read_json(.path),
   ext = ".done.json",
-  overwrite = "skip",    # Critical: skip if done file exists (resume-friendly)
+  overwrite = "skip",    # Keep an existing sentinel; the stage still runs
   autoload = FALSE,       # Downstream typically doesn't need the sentinel
   sidecar = "json"       # Still get checksums for the sentinel
 )
@@ -842,10 +842,11 @@ results <- collect(fl)
 ```
 
 **Benefits of sentinel pattern**: - **Minimal metadata**: Only one
-artifact per row in manifest - **Fast resume**: `overwrite = "skip"`
-skips completed rows - **Rich validation**: Sentinel can contain QC
-metrics, file lists, parameters - **Clean separation**: Parade tracks
-success, filesystem has all outputs
+artifact per row in manifest - **Avoid rewriting**: `overwrite = "skip"`
+keeps existing sentinel files; it does not skip stage evaluation -
+**Rich validation**: Sentinel can contain QC metrics, file lists,
+parameters - **Clean separation**: Caravan tracks success, filesystem
+has all outputs
 
 ### Pattern B: Bundle Directory
 
@@ -931,7 +932,7 @@ primary_sink <- sink_quick(
 ``` r
 
 # Complete fMRI preprocessing with sentinel pattern
-library(parade)
+library(caravan)
 paths_init()
 
 fmri_sink <- sink_quick(
@@ -971,7 +972,7 @@ fmri_sink <- sink_quick(
     .path
   },
   ext = ".prep.json",
-  overwrite = "skip"  # Don't rerun completed subjects
+  overwrite = "skip"  # Keep existing output files; stage functions still run
 )
 
 # Run preprocessing pipeline
@@ -995,9 +996,11 @@ fl <- flow(subjects_grid) |>
     schema = returns(preprocessing = artifact()),
     sink = fmri_sink
   ) |>
-  distribute(dist_slurm(n = 20))  # Parallel on cluster
+  distribute(dist_slurm(target_jobs = 20))  # Target up to 20 cluster jobs
 
-results <- collect(fl)
+d <- submit(fl)
+deferred_await(d)
+results <- deferred_collect(d)
 
 # Check success and get file lists
 for (i in 1:nrow(results)) {
@@ -1010,7 +1013,8 @@ for (i in 1:nrow(results)) {
 
 ### Tips for Multi-File Patterns
 
-1.  **Always use `overwrite = "skip"`** for resume-friendly workflows
+1.  **Choose an overwrite policy** deliberately; `"skip"` retains files
+    but does not by itself skip computation or validate prior results
 2.  **Include validation** in your sentinel (checksums, file counts, QC
     metrics)
 3.  **Use `.base` in formulas** to get directory paths without
@@ -1049,7 +1053,7 @@ for (i in 1:nrow(results)) {
 
 ## Summary
 
-The format-agnostic sink system in parade 0.12.0+ provides:
+The format-agnostic sink system in caravan provides:
 
 - **sink_quick()** - One-liner sink creation
 - **sink_temp()** - Ephemeral sinks for testing
@@ -1059,6 +1063,6 @@ The format-agnostic sink system in parade 0.12.0+ provides:
 - **Built-in formats** - RDS, CSV, JSON, Parquet, and more
 
 Whether you need quick prototyping or production-grade artifact
-management, parade’s sink system scales from simple one-liners to
+management, caravan’s sink system scales from simple one-liners to
 complex multi-format pipelines while maintaining atomic writes, metadata
 tracking, and memory efficiency.

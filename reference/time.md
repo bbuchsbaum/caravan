@@ -24,7 +24,7 @@ Updated profile object
 
 ## Note
 
-masks stats::time when parade is attached; use res_time() to avoid
+masks stats::time when caravan is attached; use res_time() to avoid
 masking.
 
 ## Examples

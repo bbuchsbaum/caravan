@@ -12,7 +12,7 @@ collect_result(x)
 
 - x:
 
-  A parade job object (parade_local_job or parade_script_job)
+  A caravan job object (parade_local_job or parade_script_job)
 
 ## Value
 

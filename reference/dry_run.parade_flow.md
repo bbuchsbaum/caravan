@@ -37,7 +37,7 @@ A summary of what the flow would execute (invisibly).
 ``` r
 grid <- data.frame(x = 1:3)
 fl <- flow(grid) |>
-  stage("sq", function(x) x^2, schema = returns(result = dbl()))
+  stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 dry_run(fl)
 #> Stages
 #> ------
@@ -49,7 +49,7 @@ dry_run(fl)
 #> #   time_source <chr>, sink <chr>, prefix <chr>, hoist <chr>
 #> 
 #> Grid rows: 3
-#> Flow fingerprint: f3c39aedfce4504a45ea43e6cecbfe35a2cbb337
+#> Flow fingerprint: f1e793998e375d8ac674a2eda9f39cfddd6d9c1a
 #> 
 #> Distribution Plan
 #> -----------------

@@ -1,4 +1,4 @@
-# Execute a parade flow and collect results
+# Execute a caravan flow and collect results
 
 Runs all stages in a flow, handling dependencies and parallelization
 according to the flow's distribution settings. Returns a tibble with
@@ -67,24 +67,19 @@ A tibble containing results from all executed stages
 
 ``` r
 # \donttest{
-grid <- data.frame(x = 1:3)
-fl <- flow(grid) |>
-  stage("double", function(x) x * 2, schema = returns(result = dbl()))
-results <- collect(fl)
-#> [parade] Stage 'double' failed after 1 attempt(s): Column 1 must be named.
-#> Use `.name_repair` to specify repair.
-#> Caused by error in `repaired_names()`:
-#> ! Names can't be empty.
-#> ✖ Empty name found at location 1.
-#> [parade] Stage 'double' failed after 1 attempt(s): Column 1 must be named.
-#> Use `.name_repair` to specify repair.
-#> Caused by error in `repaired_names()`:
-#> ! Names can't be empty.
-#> ✖ Empty name found at location 1.
-#> [parade] Stage 'double' failed after 1 attempt(s): Column 1 must be named.
-#> Use `.name_repair` to specify repair.
-#> Caused by error in `repaired_names()`:
-#> ! Names can't be empty.
-#> ✖ Empty name found at location 1.
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  example_dir <- tempfile("caravan-collect-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(artifacts = file.path(example_dir, "artifacts"))
+  grid <- data.frame(x = 1:3)
+  fl <- flow(grid) |>
+    stage("double", function(x) list(result = x * 2),
+          schema = returns(result = dbl()))
+  results <- collect(fl, engine = "sequential")
+})
 # }
 ```

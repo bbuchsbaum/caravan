@@ -15,7 +15,7 @@ await(x, timeout = Inf, poll = 10, .progress = NULL, ...)
 
 - x:
 
-  A `parade_jobset` or parade job object
+  A `parade_jobset` or caravan job object
 
 - ...:
 

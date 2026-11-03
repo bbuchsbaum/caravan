@@ -1,7 +1,6 @@
 # Append a single record to a manifest JSONL file
 
-Writes a single JSON line in append mode. For lines under PIPE_BUF (4096
-bytes) this is effectively atomic on POSIX systems.
+Atomically publish one completion record.
 
 ## Usage
 
@@ -18,3 +17,9 @@ bytes) this is effectively atomic on POSIX systems.
 - record:
 
   A list to serialize as one JSON line.
+
+## Details
+
+Each record is written to a unique temporary file and renamed within its
+stage directory. This avoids shared append races and retains legacy
+JSONL files as read-only input for backwards compatibility.

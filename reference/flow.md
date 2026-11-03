@@ -1,4 +1,4 @@
-# Create a parade flow for declarative data processing
+# Create a caravan flow for declarative data processing
 
 A flow defines a computational pipeline with typed stages that operate
 on a parameter grid. Each stage can depend on previous stages and

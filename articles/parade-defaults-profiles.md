@@ -43,7 +43,7 @@ by name:
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Define your resource templates once
 slurm_defaults_set(partition = "debug", time = "30m", cpus_per_task = 4, mem = "8G", 
@@ -67,11 +67,11 @@ one place.
 
 ## Quick Start: Setting Up Your First Profiles
 
-### Step 1: Initialize parade
+### Step 1: Initialize caravan
 
 ``` r
 
-library(parade)
+library(caravan)
 paths_init()  # Initialize parade's path system for artifact and registry management
 ```
 
@@ -112,16 +112,21 @@ slurm_defaults_set(
 
 ### Step 3: Use profiles in your workflows
 
+The examples below assume `analyze_function` returns a named `result`
+value. They construct flows; call
+[`submit()`](https://bbuchsbaum.github.io/parade/reference/submit.md) to
+start the SLURM jobs.
+
 ``` r
 
 # Quick test run
 test_results <- flow(small_grid) |>
-  stage("analyze", analyze_function) |>
+  stage("analyze", analyze_function, schema = returns(result = dbl())) |>
   distribute(dist_slurm(resources = slurm_resources(profile = "quick")))
 
 # Production run
 production_results <- flow(full_grid) |>
-  stage("analyze", analyze_function) |>
+  stage("analyze", analyze_function, schema = returns(result = dbl())) |>
   distribute(dist_slurm(resources = slurm_resources(profile = "heavy")))
 ```
 
@@ -156,11 +161,11 @@ slurm_resources(profile = "testing") # Uses "testing" profile
 
 ## User-managed site profiles
 
-Cluster policy and hardware change independently of parade releases, so
-parade does not hard-code profiles for named sites. Keep those values in
-your user or project config instead. You can define one with
+Cluster policy and hardware change independently of caravan releases, so
+caravan does not hard-code profiles for named sites. Keep those values
+in your user or project config instead. You can define one with
 [`slurm_defaults_set()`](https://bbuchsbaum.github.io/parade/reference/slurm_defaults_set.md),
-or register a list or fluent profile and ask parade to persist it:
+or register a list or fluent profile and ask caravan to persist it:
 
 ``` r
 
@@ -237,18 +242,20 @@ slurm_defaults_set(
   persist = TRUE
 )
 
+# Define process_sample and analyze_results to return the named schema fields.
 # Your analysis code stays the same!
 run_analysis <- function(samples, profile_name) {
   flow(samples) |>
-    stage("process", process_sample) |>
-    stage("analyze", analyze_results) |>
+    stage("process", process_sample, schema = returns(data = lst())) |>
+    stage("analyze", analyze_results, needs = "process",
+          schema = returns(result = dbl())) |>
     distribute(dist_slurm(resources = slurm_resources(profile = profile_name)))
 }
 
-# Progress through phases
-dev_results <- run_analysis(samples[1:5], "dev")        # Quick iteration
-test_results <- run_analysis(samples[1:100], "test")    # Validation
-prod_results <- run_analysis(samples, "prod")           # Full run
+# Build a flow for each phase; submit each flow when ready.
+dev_flow <- run_analysis(samples[1:5, ], "dev")
+test_flow <- run_analysis(samples[1:100, ], "test")
+prod_flow <- run_analysis(samples, "prod")
 ```
 
 ### Scenario 2: Mixed Workload Types
@@ -403,6 +410,7 @@ select_profile <- function(n_samples, needs_gpu = FALSE) {
   }
 }
 
+# Assume process_function returns a named numeric result.
 # Automatically choose appropriate resources
 analyze_dataset <- function(data) {
   n <- nrow(data)
@@ -412,8 +420,8 @@ analyze_dataset <- function(data) {
   message(sprintf("Using profile '%s' for %d samples", profile, n))
   
   flow(data) |>
-    stage("process", process_function) |>
-    distribute(resources = slurm_resources(profile = profile))
+    stage("process", process_function, schema = returns(result = dbl())) |>
+    distribute(dist_slurm(resources = slurm_resources(profile = profile)))
 }
 ```
 
@@ -551,7 +559,7 @@ safe_submit <- function(script, profile_name) {
 
 ## Under the Hood: where profiles live
 
-When you call `slurm_defaults_set(...)` parade updates two places:
+When you call `slurm_defaults_set(...)` caravan updates two places:
 
 1.  The current R session (`parade.slurm.defaults` for the default
     profile and `parade.slurm.profiles` for named profiles) so

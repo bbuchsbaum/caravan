@@ -125,7 +125,7 @@ dist_slurm_allocation(nodes = 10, cores_per_node = 196, within = "multicore")
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$nodes
@@ -178,7 +178,7 @@ dist_slurm_allocation(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$nodes

@@ -1,6 +1,6 @@
-# Print method for parade job objects
+# Print method for caravan job objects
 
-Common interface for printing all parade job types (script, function,
+Common interface for printing all caravan job types (script, function,
 local)
 
 ## Usage

@@ -1,7 +1,8 @@
-# Extract and sort grid-only params from a row
+# Extract and sort parameters used for completion-manifest identity
 
-Drops internal columns (`.grid_id`, `.grid_hash`) and upstream
-`stage.field` columns, then sorts by name.
+Drops only caravan's internal bookkeeping columns. Dots are valid in
+user parameter names, so they must remain part of the identity rather
+than being mistaken for upstream stage output columns.
 
 ## Usage
 

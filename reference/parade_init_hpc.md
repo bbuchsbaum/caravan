@@ -1,6 +1,6 @@
-# Initialize parade for HPC use
+# Initialize caravan for HPC use
 
-A one-command setup helper for running parade on HPC clusters. This
+A one-command setup helper for running caravan on HPC clusters. This
 function:
 
 - Initializes path aliases in `"hpc"` mode (prefer shared scratch over
@@ -34,7 +34,7 @@ parade_init_hpc(
 
 - scratch:
 
-  Optional shared scratch root. If `NULL`, parade auto-detects using
+  Optional shared scratch root. If `NULL`, caravan auto-detects using
   `PARADE_SCRATCH` / `SCRATCH` / scheduler variables.
 
 - artifacts:
@@ -102,13 +102,13 @@ parade_init_hpc(
 #> --------------
 #> - Paths initialized (profile='hpc')
 #> - Project:   /home/runner/work/parade/parade/docs/reference
-#> - Scratch:   /tmp/RtmpdVBnuX
-#> - Artifacts: /tmp/RtmpdVBnuX/parade-artifacts
-#> - Registry:  /tmp/RtmpdVBnuX/parade-registry
-#> - Template:  /tmp/RtmpdVBnuX/file1d5065bb0f0f.tmpl
+#> - Scratch:   /tmp/RtmpUmpvNB
+#> - Artifacts: /tmp/RtmpUmpvNB/parade-artifacts
+#> - Registry:  /tmp/RtmpUmpvNB/parade-registry
+#> - Template:  /tmp/RtmpUmpvNB/file19f677345292.tmpl
 #> 
 #> Warnings
 #> --------
-#> - Missing directory for: data, config, cache 
+#> - Missing directory for: data, artifacts, registry, config, cache 
 # }
 ```

@@ -40,10 +40,12 @@
 <url><loc>https://bbuchsbaum.github.io/parade/reference/balance_by.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/batch_resources.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/blob.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/parade/reference/bt_load_registry.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/bt_make_registry.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/c.parade_jobset.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/calculate_backoff.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/cancel.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/parade/reference/caravan-package.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/chr.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/chunk_by.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/code_stage.html</loc></url>
@@ -101,6 +103,7 @@
 <url><loc>https://bbuchsbaum.github.io/parade/reference/dot-manifest_record.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/dot-normalize_error_message.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/dot-parade_check_type.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/parade/reference/dot-parade_group_rows.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/dot-parade_packed_n_errors.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/dot-parse_sacct_output.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/dot-parse_slurm_exit_code.html</loc></url>
@@ -204,7 +207,6 @@
 <url><loc>https://bbuchsbaum.github.io/parade/reference/pack.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/packed_errors.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/packed_worker_function.html</loc></url>
-<url><loc>https://bbuchsbaum.github.io/parade/reference/parade-package.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/parade_config_path.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/parade_config_read.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/parade/reference/parade_config_write.html</loc></url>

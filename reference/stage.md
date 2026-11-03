@@ -1,4 +1,4 @@
-# Add a processing stage to a parade flow
+# Add a processing stage to a caravan flow
 
 A stage defines a computational step in the flow with typed inputs and
 outputs, optional dependencies, and configurable data handling options.
@@ -136,5 +136,5 @@ The input flow with the new stage added
 ``` r
 grid <- data.frame(x = 1:3)
 fl <- flow(grid) |>
-  stage("double", function(x) x * 2, schema = returns(result = dbl()))
+  stage("double", function(x) list(result = x * 2), schema = returns(result = dbl()))
 ```

@@ -1,6 +1,6 @@
-# Print method for parade script jobs
+# Print method for caravan script jobs
 
-Print method for parade script jobs
+Print method for caravan script jobs
 
 ## Usage
 

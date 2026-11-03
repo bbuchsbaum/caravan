@@ -1,6 +1,6 @@
-# Add distribution settings to a parade flow
+# Add distribution settings to a caravan flow
 
-Add distribution settings to a parade flow
+Add distribution settings to a caravan flow
 
 ## Usage
 

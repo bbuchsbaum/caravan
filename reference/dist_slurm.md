@@ -57,7 +57,7 @@ dist_slurm(
     the next group starts (work-queue pattern). This is the right choice
     when you want to pack a full node with multiple processes that each
     use their own internal parallelism (e.g., a script that calls
-    `furrr`, `mclapply`, or relies on threaded BLAS/OpenMP). Parade
+    `furrr`, `mclapply`, or relies on threaded BLAS/OpenMP). Caravan
     manages the pool; the script manages its own cores.
 
 - workers_within:
@@ -70,7 +70,7 @@ dist_slurm(
 
 - template:
 
-  Path to the SLURM batch template file. Defaults to parade's built-in
+  Path to the SLURM batch template file. Defaults to caravan's built-in
   template
   ([`slurm_template()`](https://bbuchsbaum.github.io/parade/reference/slurm_template.md)).
   Override for custom preambles, module stacks, or site-specific
@@ -96,8 +96,8 @@ dist_slurm(
 - target_jobs:
 
   Integer; the total number of SLURM jobs to create. Overrides
-  `chunks_per_job` — parade divides groups evenly across this many jobs.
-  Useful when you have a fixed allocation and want to fill it.
+  `chunks_per_job` — caravan divides groups evenly across this many
+  jobs. Useful when you have a fixed allocation and want to fill it.
 
   - `target_jobs = 10` with 81 groups → 10 jobs (~8 groups each)
 
@@ -111,13 +111,19 @@ dist_slurm(
   functions may leave background processes that prevent clean exit.
   `NULL` (default) means no timeout.
 
+- parallel_opts:
+
+  Named list of GNU Parallel options used only when
+  `within = "parallel"`. Supported entries are `parallel_bin`, `resume`,
+  `joblog`, `tagstring`, `memfree`, and `extra_args`.
+
 ## Value
 
 A `parade_dist` object for SLURM execution
 
 ## Two levels of parallelism
 
-Parade distributes work in two layers:
+Caravan distributes work in two layers:
 
 1.  **Between jobs** (`by`): the grid is split into groups by the `by`
     columns, and groups are packed into SLURM jobs. Each job is an
@@ -133,12 +139,12 @@ Standard SLURM resources (passed as `#SBATCH` flags): `account`,
 `partition`, `qos`, `time`, `mem`, `nodes`, `ntasks`, `ntasks_per_node`,
 `cpus_per_task`.
 
-Parade-specific resource keys:
+Caravan-specific resource keys:
 
 - `modules`:
 
   Character vector of environment modules to load on compute nodes
-  (e.g., `c("StdEnv/2023", "r/4.4.0")`). By default parade captures the
+  (e.g., `c("StdEnv/2023", "r/4.4.0")`). By default caravan captures the
   modules loaded in your current R session and replays them on the
   nodes. Set `modules = character(0)` to suppress all module handling.
 
@@ -176,7 +182,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$account
@@ -238,7 +244,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$account
@@ -302,7 +308,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$account
@@ -357,7 +363,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$time
@@ -403,7 +409,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$time
@@ -462,7 +468,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$account
@@ -522,7 +528,7 @@ dist_slurm(
 #> 
 #> $slurm
 #> $slurm$template
-#> [1] "/home/runner/work/_temp/Library/parade/batchtools/parade-slurm.tmpl"
+#> [1] "/home/runner/work/_temp/Library/caravan/batchtools/parade-slurm.tmpl"
 #> 
 #> $slurm$resources
 #> $slurm$resources$time

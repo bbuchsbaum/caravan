@@ -2,7 +2,7 @@
 
 ## Overview
 
-**parade** provides a comprehensive suite of tools to submit any R
+**caravan** provides a comprehensive suite of tools to submit any R
 script to SLURM and monitor it interactively from within R—no shell
 access required. This approach gives you the full power of SLURM job
 scheduling while maintaining the convenience of R-based workflow
@@ -29,7 +29,7 @@ management.
 
 ``` r
 
-library(parade)
+library(caravan)
 
 # Recommended (HPC): one-command setup
 parade_init_hpc(persist = TRUE)
@@ -299,7 +299,6 @@ job <- script_load(recent$registry[1])
 
 ## Function submission with slurm_call()
 
-New in parade 0.12.0,
 [`slurm_call()`](https://bbuchsbaum.github.io/parade/reference/slurm_call.md)
 allows you to submit R functions directly to SLURM without creating
 script files. This is ideal for interactive development, parameter
@@ -327,7 +326,7 @@ script_top(job)
 
 ### Resource profiles
 
-Parade 0.12.0 introduces resource profiles for easier resource
+Caravan 0.12.0 introduces resource profiles for easier resource
 management:
 
 ``` r
@@ -478,7 +477,7 @@ job <- slurm_call(
     Large captured objects increase overhead.
 
 2.  **Working directory**: Functions execute in a temporary staging
-    directory. Use parade’s path system for data access:
+    directory. Use caravan’s path system for data access:
 
     ``` r
 
