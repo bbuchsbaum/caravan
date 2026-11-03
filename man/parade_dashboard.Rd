@@ -2,7 +2,7 @@
 % Please edit documentation in R/dashboard.R
 \name{parade_dashboard}
 \alias{parade_dashboard}
-\title{Unified dashboard for parade jobs and runs}
+\title{Unified dashboard for caravan jobs and runs}
 \usage{
 parade_dashboard(
   x = NULL,
@@ -68,7 +68,20 @@ still delegate to live monitors like \code{\link[=top]{top()}}, \code{\link[=def
 }
 \examples{
 \donttest{
-job <- slurm_call(function(x) x^2, x = 2, engine = "local")
-parade_dashboard(job)
+local({
+  old_paths <- options(parade.paths = NULL)
+  on.exit(options(old_paths), add = TRUE)
+  example_dir <- tempfile("caravan-dashboard-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(
+    scratch = example_dir,
+    artifacts = file.path(example_dir, "artifacts"),
+    registry = file.path(example_dir, "registry")
+  )
+  job <- slurm_call(function(x) x^2, x = 2, engine = "local")
+  parade_dashboard(job)
+})
 }
 }

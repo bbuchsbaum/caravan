@@ -13,14 +13,14 @@ test_that("run registry compacts appended status updates", {
 
   paths_init(create = TRUE, quiet = TRUE)
 
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = "run-a",
     flow_stages = c("prep", "fit"),
     backend = "local",
     n_chunks = 3L,
     status = "running"
   )
-  parade:::.run_registry_update_status("run-a", "completed")
+  caravan:::.run_registry_update_status("run-a", "completed")
 
   runs <- run_ls(n = 10L)
   expect_equal(nrow(runs), 1L)
@@ -51,7 +51,7 @@ test_that("parade_dashboard shows recent runs when called without input", {
 
   paths_init(create = TRUE, quiet = TRUE)
 
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = "run-b",
     flow_stages = c("prep", "fit"),
     backend = "local",
@@ -89,12 +89,12 @@ test_that("parade_dashboard summarizes deferred runs and print uses dashboard vi
   idx_dir <- resolve_path(idx_alias)
   dir.create(idx_dir, recursive = TRUE, showWarnings = FALSE)
 
-  ok_diag <- parade:::.parade_stage_diag(
+  ok_diag <- caravan:::.parade_stage_diag(
     ok = TRUE,
     skipped = FALSE,
     started_at = Sys.time()
   )
-  fail_diag <- parade:::.parade_stage_diag(
+  fail_diag <- caravan:::.parade_stage_diag(
     ok = FALSE,
     skipped = FALSE,
     error = simpleError("boom"),
@@ -112,18 +112,18 @@ test_that("parade_dashboard summarizes deferred runs and print uses dashboard vi
   chunks_path <- file.path(root, "chunks.rds")
   saveRDS(list(1, 2, 3), chunks_path)
 
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = run_id,
     flow_stages = c("prep", "fit"),
     backend = "local",
     n_chunks = 3L,
     status = "running"
   )
-  parade:::.event_emit(run_id, "run_started", source = "submit")
-  parade:::.event_emit(run_id, "stage_started", source = "stage", chunk_id = 2L, stage = "fit", attempt = 1L)
-  parade:::.event_emit(run_id, "stage_heartbeat", source = "heartbeat", chunk_id = 2L, stage = "fit", message = "still running")
-  parade:::.event_emit(run_id, "chunk_completed", source = "chunk", chunk_id = 1L)
-  parade:::.event_emit(run_id, "chunk_failed", severity = "error", source = "chunk", chunk_id = 2L, error = "boom")
+  caravan:::.event_emit(run_id, "run_started", source = "submit")
+  caravan:::.event_emit(run_id, "stage_started", source = "stage", chunk_id = 2L, stage = "fit", attempt = 1L)
+  caravan:::.event_emit(run_id, "stage_heartbeat", source = "heartbeat", chunk_id = 2L, stage = "fit", message = "still running")
+  caravan:::.event_emit(run_id, "chunk_completed", source = "chunk", chunk_id = 1L)
+  caravan:::.event_emit(run_id, "chunk_failed", severity = "error", source = "chunk", chunk_id = 2L, error = "boom")
 
   d <- list(
     backend = "local",
@@ -190,7 +190,7 @@ test_that("parade_dashboard summarizes script jobs from run metadata", {
   registry_dir <- file.path(root, "registry", "script-run")
   dir.create(registry_dir, recursive = TRUE, showWarnings = FALSE)
 
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = run_id,
     backend = "slurm",
     n_chunks = 1L,
@@ -201,9 +201,9 @@ test_that("parade_dashboard summarizes script jobs from run metadata", {
     registry_dir = registry_dir,
     job_id = 4242L
   )
-  parade:::.event_emit(run_id, "run_started", source = "script", summary = "script analysis started")
-  parade:::.event_emit(run_id, "stage_started", source = "stage", stage = "load")
-  parade:::.event_emit(run_id, "stage_heartbeat", source = "heartbeat", stage = "load", message = "reading inputs")
+  caravan:::.event_emit(run_id, "run_started", source = "script", summary = "script analysis started")
+  caravan:::.event_emit(run_id, "stage_started", source = "stage", stage = "load")
+  caravan:::.event_emit(run_id, "stage_heartbeat", source = "heartbeat", stage = "load", message = "reading inputs")
 
   job <- structure(
     list(

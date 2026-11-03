@@ -1,5 +1,5 @@
 # Collect (blocking) -------------------------------------------------------
-#' Execute a parade flow and collect results
+#' Execute a caravan flow and collect results
 #'
 #' Runs all stages in a flow, handling dependencies and parallelization
 #' according to the flow's distribution settings. Returns a tibble with
@@ -20,10 +20,20 @@
 #' @export
 #' @examples
 #' \donttest{
-#' grid <- data.frame(x = 1:3)
-#' fl <- flow(grid) |>
-#'   stage("double", function(x) x * 2, schema = returns(result = dbl()))
-#' results <- collect(fl)
+#' local({
+#'   old <- options(parade.paths = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   example_dir <- tempfile("caravan-collect-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(quiet = TRUE)
+#'   paths_set(artifacts = file.path(example_dir, "artifacts"))
+#'   grid <- data.frame(x = 1:3)
+#'   fl <- flow(grid) |>
+#'     stage("double", function(x) list(result = x * 2),
+#'           schema = returns(result = dbl()))
+#'   results <- collect(fl, engine = "sequential")
+#' })
 #' }
 collect.parade_flow <- function(x,
                     engine    = c("future","sequential"),
@@ -44,7 +54,52 @@ collect.parade_flow <- function(x,
   options(parade.run_context = run_context)
   run_started <- Sys.time()
   dist <- x$dist
+  if (!is.null(dist)) {
+    if (!identical(dist$backend %||% "local", "local")) {
+      stop(
+        "collect() only executes local distributions. Use submit() followed by ",
+        "deferred_await() and deferred_collect() for backend '",
+        dist$backend, "'.",
+        call. = FALSE
+      )
+    }
+    unsupported_within <- c("callr", "parallel")
+    if ((dist$within %||% "sequential") %in% unsupported_within) {
+      stop(
+        "collect() does not implement within = '", dist$within,
+        "' for grouped flows. Use submit() followed by deferred_await() and ",
+        "deferred_collect(), or choose within = 'sequential', 'multisession', ",
+        "or 'multicore'.",
+        call. = FALSE
+      )
+    }
+  }
   if (is.null(dist) || length(dist$by) == 0L) {
+    if (identical(engine, "future")) {
+      selected_workers <- if (is.null(dist)) workers else dist$workers_within %||% workers
+      if (!is.null(dist) || !is.null(selected_workers)) {
+        old_plan <- future::plan()
+        on.exit(future::plan(old_plan), add = TRUE)
+        plan_spec <- if (is.null(selected_workers)) {
+          if (is.null(dist)) future::multisession else switch(
+            dist$within %||% "sequential",
+            "multisession" = future::multisession,
+            "multicore" = future::multicore,
+            "sequential" = future::sequential
+          )
+        } else {
+          if (is.null(dist)) {
+            future::tweak(future::multisession, workers = selected_workers)
+          } else switch(
+            dist$within %||% "sequential",
+            "multisession" = future::tweak(future::multisession, workers = selected_workers),
+            "multicore" = future::tweak(future::multicore, workers = selected_workers),
+            "sequential" = future::sequential
+          )
+        }
+        future::plan(plan_spec)
+      }
+    }
     mapper <- if (engine == "future") { function(.l, .f) furrr::future_pmap(.l, .f, .options=furrr::furrr_options(seed=seed_furrr, scheduling=scheduling), .progress=.progress) } else { function(.l, .f) purrr::pmap(.l, .f) }
     run <- function() { order <- .toposort(x$stages); rows <- mapper(grid, function(...) { row <- rlang::list2(...); .eval_row_flow(row, x$stages, seed_col = x$options$seed_col, error = x$options$error, order = order, validate = validate, run_context = run_context, flow_options = x$options) }); rows <- purrr::compact(rows); if (!length(rows)) return(grid[0, , drop = FALSE]); tibble::as_tibble(vctrs::vec_rbind(!!!rows)) }
     out <- if (.progress) progressr::with_progress(run()) else run()
@@ -64,7 +119,7 @@ collect.parade_flow <- function(x,
       run_key = run_context$run_key
     ))
   }
-  key <- tibble::as_tibble(grid[dist$by]); grp_id <- interaction(key, drop=TRUE, lex.order=TRUE); groups <- split(seq_len(nrow(grid)), grp_id)
+  groups <- .parade_group_rows(grid, dist$by)
   chunks_per_job <- max(1L, dist$chunks_per_job %||% 1L); chunks <- split(groups, ceiling(seq_along(groups)/chunks_per_job))
   run_chunk <- function(idx_vec) {
     order <- .toposort(x$stages); out <- list(); subrows <- unlist(idx_vec, use.names = FALSE)
@@ -74,17 +129,15 @@ collect.parade_flow <- function(x,
     if (!length(out)) return(grid[0, , drop = FALSE]); tibble::as_tibble(vctrs::vec_rbind(!!!out))
   }
   op <- future::plan(); on.exit(future::plan(op), add = TRUE)
-  inner <- switch(dist$within,
-    "multisession" = future::tweak(future::multisession, workers = dist$workers_within %||% workers %||% NULL),
-    "multicore" = future::tweak(future::multicore, workers = dist$workers_within %||% workers %||% NULL),
-    "callr" = {
-      # callr uses group-level process pooling inside the chunk; outer
-      # dispatch is sequential — parallelism is managed by the callr pool.
-      future::sequential
-    },
-    "sequential" = future::sequential,
-    future::sequential  # fallback
-  )
+  inner <- if (identical(engine, "sequential")) {
+    future::sequential
+  } else {
+    switch(dist$within,
+      "multisession" = future::tweak(future::multisession, workers = dist$workers_within %||% workers %||% NULL),
+      "multicore" = future::tweak(future::multicore, workers = dist$workers_within %||% workers %||% NULL),
+      "sequential" = future::sequential
+    )
+  }
   future::plan(list(inner))
   parts <- furrr::future_map(chunks, run_chunk, .options=furrr::furrr_options(seed=seed_furrr, scheduling=scheduling), .progress=.progress)
   parts <- purrr::compact(parts)

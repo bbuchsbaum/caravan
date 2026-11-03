@@ -146,3 +146,23 @@ test_that(".capture_child_io = FALSE skips writing per-element stdio files", {
     expect_length(out_files, 0L)
   })
 })
+
+test_that("packed write_result preserves element error accounting", {
+  out_dir <- withr::local_tempdir()
+  result <- packed_worker_function(
+    chunk_elements = list(1L, 2L),
+    chunk_indices = c(1L, 2L),
+    worker_fn = function(x) if (x == 2L) stop("boom") else x,
+    write_result_template = file.path(out_dir, "result_{index}.rds"),
+    workers = 1L,
+    parallel_backend = "sequential",
+    chunk_log_dir = file.path(out_dir, "logs"),
+    chunk_name = "one"
+  )
+
+  expect_equal(attr(result, "n_errors"), 1L)
+  expect_equal(attr(result, "error_indices"), 2L)
+  expect_false(isTRUE(attr(result[[1L]], "parade_error")))
+  expect_true(isTRUE(attr(result[[2L]], "parade_error")))
+  expect_s3_class(readRDS(result[[2L]]), "error")
+})

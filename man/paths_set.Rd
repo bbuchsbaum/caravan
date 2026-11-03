@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths.R
 \name{paths_set}
 \alias{paths_set}
-\title{Set specific parade paths}
+\title{Set specific caravan paths}
 \usage{
 paths_set(...)
 }
@@ -13,8 +13,12 @@ paths_set(...)
 Updated paths list (invisibly)
 }
 \description{
-Set specific parade paths
+Set specific caravan paths
 }
 \examples{
-paths_set(data = "/custom/data", artifacts = "/tmp/artifacts")
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  paths_set(data = "/custom/data", artifacts = "/tmp/artifacts")
+})
 }

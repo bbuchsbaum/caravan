@@ -1,14 +1,14 @@
-# parade
+# caravan
 
 [![R-CMD-check](https://github.com/bbuchsbaum/parade/actions/workflows/check.yaml/badge.svg)](https://github.com/bbuchsbaum/parade/actions/workflows/check.yaml) [![codecov](https://codecov.io/gh/bbuchsbaum/parade/branch/main/graph/badge.svg)](https://codecov.io/gh/bbuchsbaum/parade)
 
 **Declarative parallel dataflow for R** — from laptop to HPC.
-Define *what* to compute, not *how* to loop. Parade builds typed, parallel workflows; persists large outputs as **artifacts** (sinks); and talks to **SLURM** directly (submit, monitor, cancel) so you rarely have to leave R.
+Define *what* to compute, not *how* to loop. Caravan builds typed, parallel workflows; persists large outputs as **artifacts** (sinks); and talks to **SLURM** directly (submit, monitor, cancel) so you rarely have to leave R.
 
 - Website & docs: https://bbuchsbaum.github.io/parade/
 - Source: https://github.com/bbuchsbaum/parade
 
-> **Why parade?** Clean, composable pipelines with explicit types and lazily persisted outputs, plus first-class HPC ergonomics (portable paths, SLURM defaults, live monitoring).
+> **Why caravan?** Clean, composable pipelines with explicit types and lazily persisted outputs, plus first-class HPC ergonomics (portable paths, SLURM defaults, live monitoring).
 
 ## Install
 
@@ -18,12 +18,12 @@ Define *what* to compute, not *how* to loop. Parade builds typed, parallel workf
 remotes::install_github("bbuchsbaum/parade")
 ```
 
-Note: The CRAN package named `parade` is unrelated (economic "income parades"). This project is currently GitHub-only.
+Previously named parade, caravan is currently available from GitHub.
 
 ## 60-second tour
 
 ```r
-library(parade)
+library(caravan)
 library(progressr)
 handlers(global = TRUE)   # progress bars everywhere
 
@@ -37,8 +37,10 @@ fl <- flow(grid) |>
   stage(
     id = "fit",
     f = function(subject, session) {
-      model <- lm(rnorm(1000) ~ rnorm(1000))
-      list(model = model, rmse = runif(1))
+      predictor <- rnorm(1000)
+      response <- 2 * predictor + rnorm(1000)
+      model <- lm(response ~ predictor)
+      list(model = model, rmse = sqrt(mean(residuals(model)^2)))
     },
     schema = schema(model = artifact(), rmse = dbl()),   # big → artifact, small → memory
     sink   = sink_spec(fields = "model",
@@ -46,14 +48,14 @@ fl <- flow(grid) |>
                        template = "{.stage}/{subject}/ses{session}-{.row_key}")
   )
 
-# Execute locally or with futures/mirai/SLURM
-res <- collect(fl, engine = "future", workers = 4)
+# Execute locally
+res <- collect(fl, engine = "sequential")
 
-res$model[[1]]   # file-ref (path, bytes, sha256, written/existed)
-res$rmse         # numeric in-memory
+res$fit.model[[1]]  # file-ref (path, bytes, sha256, written/existed)
+res$fit.rmse        # numeric in-memory
 ```
 
-- **Artifacts (sinks)** keep memory tiny and runs resumable — see the [Artifacts vignette](https://bbuchsbaum.github.io/parade/articles/parade-artifacts.html).
+- **Artifacts (sinks)** store selected outputs on disk — see the [Artifacts vignette](https://bbuchsbaum.github.io/parade/articles/parade-artifacts.html).
 - **Portable paths** like `artifacts://` resolve to scratch on HPC or temp on laptops — see [Smart Path Management](https://bbuchsbaum.github.io/parade/articles/parade-paths.html).
 - **Typed returns** (`dbl()`, `int()`, `lst()`, `artifact()`) catch mistakes early — see [Core concepts](https://bbuchsbaum.github.io/parade/articles/parade-core.html).
 
@@ -95,11 +97,13 @@ central dispatcher — giving you low-latency fan-out, automatic load
 balancing, and optional SSH/TLS transport.
 
 ```r
-# Local: spin up 8 daemon workers on this machine.
+# Local: spin up 2 daemon workers on this machine.
 # The dispatcher feeds tasks to whichever worker is free next.
-fl |>
-  distribute(dist_mirai(n = 8, dispatcher = TRUE)) |>
-  collect()
+handle <- fl |>
+  distribute(dist_mirai(n = 2, dispatcher = TRUE)) |>
+  submit()
+deferred_await(handle, timeout = 60)
+res <- deferred_collect(handle)
 
 # HPC: launch 32 daemon workers as SLURM jobs.
 # Each worker is a persistent R process that pulls work from the dispatcher,
@@ -114,7 +118,7 @@ See [Mirai backend](https://bbuchsbaum.github.io/parade/articles/parade-mirai.ht
 ## Portable paths (laptop ↔ HPC without edits)
 
 Hard-coded paths break when you move between your laptop and a cluster.
-Parade solves this with **protocol-style aliases** that resolve to the
+Caravan solves this with **protocol-style aliases** that resolve to the
 right directory on each machine:
 
 ```r
@@ -143,17 +147,17 @@ artifact_catalog_search(query = "fit")
 
 ## Why not {targets} / {drake} / {furrr}?
 
-Parade is deliberately small and compositional:
+Caravan is deliberately small and compositional:
 - Dataframe-shaped param grids vs. global DAG caches
 - Pseudo-typed returns for crisp contracts
 - Built-in sinks for large results
 - HPC ergonomics: SLURM submission, defaults, monitoring, path aliases
 
-They play nicely together; parade focuses on elegant, fast fan-out/fan-in.
+They play nicely together; caravan focuses on elegant, fast fan-out/fan-in.
 
 ## Learn more
 
-- Parade core: flows, stages, schemas → https://bbuchsbaum.github.io/parade/articles/parade-core.html
+- Caravan core: flows, stages, schemas → https://bbuchsbaum.github.io/parade/articles/parade-core.html
 - Artifacts & sinks → https://bbuchsbaum.github.io/parade/articles/parade-artifacts.html
 - Distribution (local/SLURM) → https://bbuchsbaum.github.io/parade/articles/parade-slurm-distribution.html
 - SLURM monitoring → https://bbuchsbaum.github.io/parade/articles/parade-scripts-monitoring.html

@@ -26,7 +26,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 
 ## Overview
 
-**parade** provides a comprehensive suite of tools to submit any R script to SLURM and monitor it interactively from within R—no shell access required. This approach gives you the full power of SLURM job scheduling while maintaining the convenience of R-based workflow management.
+**caravan** provides a comprehensive suite of tools to submit any R script to SLURM and monitor it interactively from within R—no shell access required. This approach gives you the full power of SLURM job scheduling while maintaining the convenience of R-based workflow management.
 
 ## Key monitoring capabilities
 
@@ -40,7 +40,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ## Quick start example
 
 ```r
-library(parade)
+library(caravan)
 
 # Recommended (HPC): one-command setup
 parade_init_hpc(persist = TRUE)
@@ -287,7 +287,7 @@ job <- script_load(recent$registry[1])
 
 ## Function submission with slurm_call()
 
-New in parade 0.12.0, `slurm_call()` allows you to submit R functions directly to SLURM without creating script files. This is ideal for interactive development, parameter sweeps, and functional programming workflows.
+`slurm_call()` allows you to submit R functions directly to SLURM without creating script files. This is ideal for interactive development, parameter sweeps, and functional programming workflows.
 
 ### Basic function submission
 
@@ -310,7 +310,7 @@ script_top(job)
 
 ### Resource profiles
 
-Parade 0.12.0 introduces resource profiles for easier resource management:
+Caravan 0.12.0 introduces resource profiles for easier resource management:
 
 ```r
 # Use built-in profiles
@@ -451,7 +451,7 @@ job <- slurm_call(
 
 1. **Serialization size**: The function and its environment are serialized with `saveRDS()`. Large captured objects increase overhead.
 
-2. **Working directory**: Functions execute in a temporary staging directory. Use parade's path system for data access:
+2. **Working directory**: Functions execute in a temporary staging directory. Use caravan's path system for data access:
    ```r
    slurm_call(
      function() {

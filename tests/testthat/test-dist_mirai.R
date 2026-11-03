@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("dist_mirai rejects quoted expressions for url/remote", {
   expect_error(

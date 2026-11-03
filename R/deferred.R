@@ -148,7 +148,7 @@
 
 #' Submit a flow for deferred execution
 #'
-#' Submits a parade flow for asynchronous execution, either locally using
+#' Submits a caravan flow for asynchronous execution, either locally using
 #' future or on SLURM using batchtools. Returns a handle for monitoring
 #' and collecting results.
 #'
@@ -167,14 +167,23 @@
 #' @export
 #' @examples
 #' \donttest{
+#' local({
+#'   old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old_options), add = TRUE)
+#'   example_dir <- tempfile("parade-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
 #' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 #' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "group", within = "sequential"))
 #' 
 #' deferred <- submit(fl)
-#' unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-#' unlink("parade.log")
+#' deferred_await(deferred, timeout = 60)
+#' })
 #' }
 submit <- function(fl, mode = c("index","results"), run_id = NULL, registry_dir = NULL, index_dir = NULL, seed_furrr = TRUE, scheduling = 1, clean = FALSE, label = NULL) {
   stopifnot(inherits(fl, "parade_flow"))
@@ -182,14 +191,9 @@ submit <- function(fl, mode = c("index","results"), run_id = NULL, registry_dir 
   dist <- fl$dist
   if (is.null(dist)) stop("submit(): flow must have a distribution (see dist_local()/dist_slurm()).")
   grid <- fl$grid
-  if (length(dist$by) == 0 || is.null(dist$by)) {
-    # If no grouping columns, each row is its own group
-    groups <- as.list(seq_len(nrow(grid)))
-  } else {
-    key <- tibble::as_tibble(grid[dist$by])
-    grp_id <- interaction(key, drop = TRUE, lex.order = TRUE)
-    groups <- split(seq_len(nrow(grid)), grp_id)
-  }
+  # With no grouping columns each row is its own group. Missing grouping
+  # values are valid keys and must not cause rows to disappear.
+  groups <- .parade_group_rows(grid, dist$by)
   n_groups <- length(groups)
   prune_plan <- .parade_submit_prune_groups(fl, groups, mode = mode)
   pruned_groups <- prune_plan$pruned %||% list()
@@ -287,6 +291,19 @@ submit <- function(fl, mode = c("index","results"), run_id = NULL, registry_dir 
       call. = FALSE
     )
   }
+  .parade_write_chunk_plan(run_id, .parade_chunk_plan_tbl(grid, chunks, by_cols = dist$by))
+  .parade_status_write(run_id, .replace = TRUE, .fields = list(
+    backend = dist$backend, registry_dir = handle$registry_dir,
+    flow_path = handle$flow_path, chunks_path = handle$chunks_path,
+    index_dir = handle$index_dir, stages = vapply(fl$stages, function(s) s$id, character(1)),
+    by = dist$by, within = dist$within, workers_within = dist$workers_within,
+    chunks_per_job = chunks_per_job, target_jobs = dist$target_jobs,
+    total_groups = n_groups, expected_jobs = length(pending_chunk_ids),
+    pending_chunk_ids = as.integer(pending_chunk_ids), pruned_jobs = length(pruned_chunk_ids),
+    submitted_jobs = 0L, missing_jobs = length(pending_chunk_ids),
+    submission_state = "started", submission_started_at = .parade_now(),
+    submitted_at = handle$submitted_at
+  ))
   if (length(pruned_chunk_ids)) {
     for (chunk_id in pruned_chunk_ids) {
       .parade_execute_chunk(
@@ -307,16 +324,40 @@ submit <- function(fl, mode = c("index","results"), run_id = NULL, registry_dir 
     handle$jobs <- list()
     handle$submitted_jobs <- 0L
   } else {
-    handle <- submitter(
-      handle = handle,
-      dist = dist,
-      chunks = chunks,
-      index_dir_resolved = index_dir_resolved,
-      mode = mode,
-      seed_furrr = seed_furrr,
-      scheduling = scheduling
+    handle <- tryCatch(
+      submitter(
+        handle = handle, dist = dist, chunks = chunks,
+        index_dir_resolved = index_dir_resolved, mode = mode,
+        seed_furrr = seed_furrr, scheduling = scheduling
+      ),
+      error = function(e) {
+        current <- .parade_status_read(run_id)
+        count <- as.integer(current$submitted_jobs %||% 0L)
+        # Backends without progress reporting may have submitted jobs before
+        # failing; a zero count cannot establish that none reached the scheduler.
+        if (is.na(count) || count == 0L) count <- NA_integer_
+        missing <- if (is.na(count)) NA_integer_ else max(length(pending_chunk_ids) - count, 0L)
+        next_id <- if (!is.na(missing) && missing > 0L) pending_chunk_ids[[count + 1L]] else NULL
+        classification <- .parade_classify_submit_error(conditionMessage(e))
+        .parade_status_write(run_id, .fields = list(
+          submission_state = "failed", submission_finished_at = .parade_now(),
+          submitted_jobs = count, missing_jobs = missing,
+          first_unsubmitted = if (!is.null(next_id)) .parade_chunk_lookup(run_id, next_id) else NULL,
+          last_submit_error = conditionMessage(e), submit_error_class = classification$class,
+          submit_retryable = classification$retryable
+        ))
+        if (!is.null(next_id)) .parade_write_incomplete_jobs(run_id, next_id)
+        stop(e)
+      }
     )
   }
+  submitted_count <- as.integer(handle$submitted_jobs %||% length(pending_chunk_ids))
+  .parade_status_write(run_id, .fields = list(
+    submission_state = "finished", submission_finished_at = .parade_now(),
+    submitted_jobs = submitted_count,
+    missing_jobs = max(length(pending_chunk_ids) - submitted_count, 0L)
+  ))
+  .parade_write_submission_complete(run_id, submitted_count)
   handle$.fl_data <- NULL
   handle$.chunks_data <- NULL
 
@@ -514,21 +555,29 @@ parade_run_row <- function(flow_path, chunks_path, chunk_id, row_id,
 
 #' @keywords internal
 .parade_run_row_wrapper <- function() {
-  wrapper <- system.file("scripts", "parade_run_row.R", package = "parade")
+  wrapper <- system.file("scripts", "parade_run_row.R", package = "caravan")
   if (nzchar(wrapper) && file.exists(wrapper)) return(wrapper)
   # devtools::load_all support — fall back to the source tree copy
   src <- file.path(getwd(), "inst", "scripts", "parade_run_row.R")
   if (file.exists(src)) return(src)
   # Last resort: search DESC-level path
-  pkg <- tryCatch(find.package("parade"), error = function(e) NULL)
+  pkg <- tryCatch(find.package("caravan"), error = function(e) NULL)
   if (!is.null(pkg)) {
     cand <- file.path(pkg, "inst", "scripts", "parade_run_row.R")
     if (file.exists(cand)) return(cand)
     cand2 <- file.path(pkg, "scripts", "parade_run_row.R")
     if (file.exists(cand2)) return(cand2)
   }
-  stop("parade_run_row.R wrapper script not found; reinstall parade",
+  stop("parade_run_row.R wrapper script not found; reinstall caravan",
        call. = FALSE)
+}
+
+# GNU Parallel builds a shell command from the command and trailing arguments.
+# Quote executable and wrapper paths here rather than relying on PATH lookup or
+# assuming an installation prefix without spaces.
+.parade_parallel_row_command <- function(rscript, wrapper, row_ids) {
+  c(shQuote(rscript), "--vanilla", shQuote(wrapper), "{}", ":::",
+    as.character(row_ids))
 }
 
 #' @keywords internal
@@ -545,6 +594,7 @@ parade_run_row <- function(flow_path, chunks_path, chunk_id, row_id,
   opts <- dist$parallel_opts %||% list()
   parallel_bin <- .parade_find_parallel(opts$parallel_bin)
   wrapper <- .parade_run_row_wrapper()
+  rscript <- normalizePath(file.path(R.home("bin"), "Rscript"), mustWork = TRUE)
 
   dir.create(index_dir, recursive = TRUE, showWarnings = FALSE)
   joblog <- opts$joblog %||% file.path(
@@ -562,9 +612,7 @@ parade_run_row <- function(flow_path, chunks_path, chunk_id, row_id,
       c("--timeout", as.character(as.integer(dist$callr_timeout))) else NULL,
     if (!is.null(opts$memfree)) c("--memfree", opts$memfree) else NULL,
     as.character(opts$extra_args %||% character()),
-    "Rscript", "--vanilla", wrapper, "{}",
-    ":::",
-    as.character(row_ids)
+    .parade_parallel_row_command(rscript, wrapper, row_ids)
   )
 
   pkg_root <- tryCatch(normalizePath(getwd(), mustWork = TRUE),
@@ -682,11 +730,11 @@ parade_run_row <- function(flow_path, chunks_path, chunk_id, row_id,
         function(group_rows, stages, seed_col, error_policy, order,
                  run_context, flow_options, pkg_root) {
           # Load parade in the child process
-          if (!require("parade", character.only = TRUE, quietly = TRUE)) {
+          if (!require("caravan", character.only = TRUE, quietly = TRUE)) {
             if (!is.null(pkg_root) && requireNamespace("pkgload", quietly = TRUE)) {
               pkgload::load_all(pkg_root, quiet = TRUE)
             } else {
-              stop("Cannot load parade package in callr worker", call. = FALSE)
+              stop("Cannot load caravan package in callr worker", call. = FALSE)
             }
           }
           # Ensure any sub-workers (furrr, multicore, etc.) spawned by the
@@ -933,14 +981,23 @@ parade_run_row <- function(flow_path, chunks_path, chunk_id, row_id,
 #' @export
 #' @examples
 #' \donttest{
+#' local({
+#'   old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old_options), add = TRUE)
+#'   example_dir <- tempfile("parade-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
 #' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 #' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "group", within = "sequential"))
 #' deferred <- submit(fl)
 #' status <- deferred_status(deferred)
-#' unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-#' unlink("parade.log")
+#' deferred_await(deferred, timeout = 60)
+#' })
 #' }
 deferred_status <- function(d, detail = FALSE) {
   stopifnot(inherits(d, "parade_deferred"))
@@ -950,7 +1007,7 @@ deferred_status <- function(d, detail = FALSE) {
                                 running = NA_integer_, done = NA_integer_, error = NA_integer_)
     reg <- tryCatch(
       suppressMessages(suppressWarnings(
-        batchtools::loadRegistry(d$registry_dir, writeable = FALSE)
+        bt_load_registry(d$registry_dir, writeable = FALSE)
       )),
       error = function(e) NULL
     )
@@ -1008,20 +1065,28 @@ deferred_status <- function(d, detail = FALSE) {
 #' @export
 #' @examples
 #' \donttest{
+#' local({
+#'   old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old_options), add = TRUE)
+#'   example_dir <- tempfile("parade-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
 #' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 #' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "group", within = "sequential"))
 #' deferred <- submit(fl)
 #' deferred_await(deferred, timeout = 600)
-#' unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-#' unlink("parade.log")
+#' })
 #' }
 deferred_await <- function(d, timeout = Inf, poll = 10) {
   stopifnot(inherits(d, "parade_deferred"))
   if (identical(d$backend, "slurm")) {
     if (!requireNamespace("batchtools", quietly = TRUE)) stop("batchtools not available.")
-    reg <- batchtools::loadRegistry(d$registry_dir, writeable = FALSE); batchtools::waitForJobs(reg = reg, timeout = timeout, sleep = poll)
+    reg <- bt_load_registry(d$registry_dir, writeable = FALSE); batchtools::waitForJobs(reg = reg, timeout = timeout, sleep = poll)
   } else if (identical(d$backend, "crew")) {
     if (!requireNamespace("crew", quietly = TRUE)) stop("crew not available.")
     controller <- d$crew_controller
@@ -1051,20 +1116,28 @@ deferred_await <- function(d, timeout = Inf, poll = 10) {
 #' @export
 #' @examples
 #' \donttest{
+#' local({
+#'   old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old_options), add = TRUE)
+#'   example_dir <- tempfile("parade-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
 #' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 #' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "group", within = "sequential"))
 #' deferred <- submit(fl)
 #' deferred_cancel(deferred, which = "running")
-#' unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-#' unlink("parade.log")
+#' })
 #' }
 deferred_cancel <- function(d, which = c("running","all")) {
   stopifnot(inherits(d, "parade_deferred")); which <- match.arg(which)
   if (identical(d$backend, "slurm")) {
     if (!requireNamespace("batchtools", quietly = TRUE)) stop("batchtools not available.")
-    reg <- batchtools::loadRegistry(d$registry_dir, writeable = TRUE); ids <- if (which == "running") batchtools::findRunning(reg = reg) else batchtools::findJobs(reg = reg); if (length(ids)) batchtools::killJobs(ids, reg = reg)
+    reg <- bt_load_registry(d$registry_dir, writeable = TRUE); ids <- if (which == "running") batchtools::findRunning(reg = reg) else batchtools::findJobs(reg = reg); if (length(ids)) batchtools::killJobs(ids, reg = reg)
   } else if (identical(d$backend, "crew")) {
     if (!requireNamespace("crew", quietly = TRUE)) stop("crew not available.")
     controller <- d$crew_controller
@@ -1095,16 +1168,24 @@ deferred_cancel <- function(d, which = c("running","all")) {
 #' @export
 #' @examples
 #' \donttest{
+#' local({
+#'   old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old_options), add = TRUE)
+#'   example_dir <- tempfile("parade-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
 #' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 #' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "group", within = "sequential"))
 #' deferred <- submit(fl)
 #' # Wait for completion with a finite timeout to avoid hanging
 #' deferred_await(deferred, timeout = 600)
 #' results <- deferred_collect(deferred)
-#' unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-#' unlink("parade.log")
+#' })
 #' }
 deferred_collect <- function(d, how = c("auto","index","results")) {
   stopifnot(inherits(d, "parade_deferred")); how <- match.arg(how); if (identical(how, "auto")) how <- d$mode
@@ -1147,7 +1228,7 @@ deferred_collect <- function(d, how = c("auto","index","results")) {
         }
       }
       dir <- resolve_path(d$index_dir)
-      files <- list.files(dir, pattern = "\\.rds$", full.names = TRUE)
+      files <- list.files(dir, pattern = "^index-[0-9]+\\.rds$", full.names = TRUE)
       if (!length(files)) return(tibble::tibble())
       lst <- lapply(files, readRDS)
       return(tibble::as_tibble(vctrs::vec_rbind(!!!lst)))
@@ -1184,7 +1265,7 @@ deferred_collect <- function(d, how = c("auto","index","results")) {
       if (!requireNamespace("batchtools", quietly = TRUE)) stop("batchtools not available.")
       reg <- tryCatch(
         suppressMessages(suppressWarnings(
-          batchtools::loadRegistry(d$registry_dir, writeable = FALSE)
+          bt_load_registry(d$registry_dir, writeable = FALSE)
         )),
         error = function(e) NULL
       )
@@ -1193,14 +1274,14 @@ deferred_collect <- function(d, how = c("auto","index","results")) {
       }
     }
     dir <- resolve_path(d$index_dir)
-    files <- list.files(dir, pattern = "\\.rds$", full.names = TRUE)
+    files <- list.files(dir, pattern = "^index-[0-9]+\\.rds$", full.names = TRUE)
     if (!length(files)) return(tibble::tibble())
     lst <- lapply(files, readRDS)
     tibble::as_tibble(vctrs::vec_rbind(!!!lst))
   } else {
     if (identical(d$backend, "slurm")) {
       if (!requireNamespace("batchtools", quietly = TRUE)) stop("batchtools not available.")
-      reg <- batchtools::loadRegistry(d$registry_dir, writeable = FALSE)
+      reg <- bt_load_registry(d$registry_dir, writeable = FALSE)
       batchtools::waitForJobs(reg = reg)
       lst <- batchtools::reduceResultsList(reg = reg)
       lst <- purrr::compact(lst)

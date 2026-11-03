@@ -18,11 +18,12 @@ Resolved template path (invisibly)
 Set the default SLURM template path
 }
 \examples{
-# Set a custom template path (temporarily, without persisting)
-temp_file <- tempfile(fileext = ".tmpl")
-writeLines("#!/bin/bash", temp_file)
-slurm_template_set(temp_file, persist = FALSE)
-
-# Clean up
-unlink(temp_file)
+local({
+  old <- options(parade.slurm.template = NULL)
+  on.exit(options(old), add = TRUE)
+  temp_file <- tempfile(fileext = ".tmpl")
+  on.exit(unlink(temp_file), add = TRUE)
+  writeLines("#!/bin/bash", temp_file)
+  slurm_template_set(temp_file, persist = FALSE)
+})
 }

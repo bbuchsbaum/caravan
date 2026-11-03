@@ -7,7 +7,7 @@
 as_jobset(x, ...)
 }
 \arguments{
-\item{x}{A parade job object, list of jobs, or existing jobset}
+\item{x}{A caravan job object, list of jobs, or existing jobset}
 
 \item{...}{Additional arguments (unused)}
 }

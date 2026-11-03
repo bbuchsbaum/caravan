@@ -40,7 +40,7 @@ will happen on the current machine.
 \examples{
 grid <- data.frame(subject = paste0("sub", 1:40), x = seq_len(40))
 fl <- flow(grid) |>
-  stage("sq", function(x) x^2, schema = returns(result = dbl())) |>
+  stage("sq", function(x) list(result = x^2), schema = returns(result = dbl())) |>
   distribute(dist_local(by = "subject", within = "callr",
                         workers_within = 10L))
 resolve_dist_plan(fl)

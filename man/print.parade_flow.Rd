@@ -2,7 +2,7 @@
 % Please edit documentation in R/flow.R
 \name{print.parade_flow}
 \alias{print.parade_flow}
-\title{Print method for parade flows}
+\title{Print method for caravan flows}
 \usage{
 \method{print}{parade_flow}(x, ...)
 }
@@ -15,12 +15,12 @@
 The input object (invisibly)
 }
 \description{
-Print method for parade flows
+Print method for caravan flows
 }
 \examples{
 grid <- data.frame(x = 1:3)
 fl <- flow(grid) |>
-  stage("sq", function(x) x^2, schema = returns(result = dbl()))
+  stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 print(fl)
 
 }

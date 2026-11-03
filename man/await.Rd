@@ -10,7 +10,7 @@ await(x, ...)
 \method{await}{parade_jobset}(x, timeout = Inf, poll = 10, .progress = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{parade_jobset} or parade job object}
+\item{x}{A \code{parade_jobset} or caravan job object}
 
 \item{...}{Additional arguments passed to method implementations}
 

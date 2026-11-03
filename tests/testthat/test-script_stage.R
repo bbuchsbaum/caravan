@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 library(tibble)
 
 # ============================================================================
@@ -37,24 +36,24 @@ test_that("get_arg positional access via parade.args", {
 })
 
 test_that(".auto_coerce handles types correctly", {
-  expect_equal(parade:::.auto_coerce("42"), 42L)
-  expect_equal(parade:::.auto_coerce("3.14"), 3.14)
-  expect_equal(parade:::.auto_coerce("true"), TRUE)
-  expect_equal(parade:::.auto_coerce("FALSE"), FALSE)
-  expect_equal(parade:::.auto_coerce("hello"), "hello")
-  expect_equal(parade:::.auto_coerce(""), "")
+  expect_equal(caravan:::.auto_coerce("42"), 42L)
+  expect_equal(caravan:::.auto_coerce("3.14"), 3.14)
+  expect_equal(caravan:::.auto_coerce("true"), TRUE)
+  expect_equal(caravan:::.auto_coerce("FALSE"), FALSE)
+  expect_equal(caravan:::.auto_coerce("hello"), "hello")
+  expect_equal(caravan:::.auto_coerce(""), "")
   # Large integer overflows to numeric
-  expect_is(parade:::.auto_coerce("99999999999"), "numeric")
+  expect_is(caravan:::.auto_coerce("99999999999"), "numeric")
 })
 
 test_that(".parse_cli_args returns correct structure", {
   # Clear cache and test that parsing returns the right shape
-  env <- environment(parade:::.parse_cli_args)
+  env <- environment(caravan:::.parse_cli_args)
   .arg_env <- get(".arg_env", envir = env)
   old <- .arg_env$parsed
   .arg_env$parsed <- NULL
   on.exit(.arg_env$parsed <- old)
-  result <- parade:::.parse_cli_args()
+  result <- caravan:::.parse_cli_args()
   expect_true(is.list(result))
   expect_true("named" %in% names(result))
   expect_true("positional" %in% names(result))
@@ -307,7 +306,7 @@ test_that("manifest mode: script uses script_returns()", {
   writeLines(c(
     'out <- file.path(.dir, paste0("result_", x, ".rds"))',
     'saveRDS(x * 10, out)',
-    'parade::script_returns(result = out)'
+    'caravan::script_returns(result = out)'
   ), script_path)
 
   grid <- tibble(x = 1:2, .dir = tmp)
@@ -333,7 +332,7 @@ test_that("manifest mode: multiple named outputs", {
     'rp <- file.path(.dir, paste0("report_", x, ".txt"))',
     'saveRDS(x, mp)',
     'writeLines(as.character(x), rp)',
-    'parade::script_returns(model = mp, report = rp)'
+    'caravan::script_returns(model = mp, report = rp)'
   ), script_path)
 
   grid <- tibble(x = 1:2, .dir = tmp)
@@ -371,7 +370,7 @@ test_that("manifest mode: error when script_returns missing output name", {
   writeLines(c(
     'f <- file.path(.dir, "a.rds")',
     'saveRDS(1, f)',
-    'parade::script_returns(model = f)'
+    'caravan::script_returns(model = f)'
   ), script_path)
 
   grid <- tibble(x = 1L, .dir = tmp)
@@ -388,10 +387,10 @@ test_that("manifest mode: get_arg works inside source-engine script", {
   tmp <- withr::local_tempdir()
   script_path <- file.path(tmp, "uses_get_arg.R")
   writeLines(c(
-    'val <- parade::get_arg("x")',
+    'val <- caravan::get_arg("x")',
     'out <- file.path(.dir, paste0("out_", val, ".rds"))',
     'saveRDS(val * 2, out)',
-    'parade::script_returns(result = out)'
+    'caravan::script_returns(result = out)'
   ), script_path)
 
   grid <- tibble(x = 1:2, .dir = tmp)
@@ -415,7 +414,7 @@ test_that(".make_file_ref produces correct structure", {
   path <- file.path(tmp, "test.rds")
   saveRDS(42, path)
 
-  ref <- parade:::.make_file_ref(path)
+  ref <- caravan:::.make_file_ref(path)
   expect_true(is.list(ref))
   expect_length(ref, 1)
   expect_s3_class(ref[[1]], "tbl_df")
@@ -427,11 +426,11 @@ test_that(".make_file_ref produces correct structure", {
 })
 
 test_that(".guess_interpreter works for common extensions", {
-  expect_equal(parade:::.guess_interpreter("foo.R"), "Rscript")
-  expect_equal(parade:::.guess_interpreter("foo.r"), "Rscript")
-  expect_equal(parade:::.guess_interpreter("foo.py"), "python")
-  expect_equal(parade:::.guess_interpreter("foo.sh"), "bash")
-  expect_error(parade:::.guess_interpreter("foo.xyz"), "Cannot guess interpreter")
+  expect_equal(caravan:::.guess_interpreter("foo.R"), "Rscript")
+  expect_equal(caravan:::.guess_interpreter("foo.r"), "Rscript")
+  expect_equal(caravan:::.guess_interpreter("foo.py"), "python")
+  expect_equal(caravan:::.guess_interpreter("foo.sh"), "bash")
+  expect_error(caravan:::.guess_interpreter("foo.xyz"), "Cannot guess interpreter")
 })
 
 test_that("multiple unnamed produces in template mode errors", {
@@ -680,7 +679,7 @@ test_that(".make_file_ref_cached produces correct structure", {
   path <- file.path(tmp, "cached.rds")
   saveRDS(42, path)
 
-  ref <- parade:::.make_file_ref_cached(path)
+  ref <- caravan:::.make_file_ref_cached(path)
   expect_true(is.list(ref))
   expect_length(ref, 1)
   expect_s3_class(ref[[1]], "tbl_df")
@@ -709,27 +708,27 @@ test_that("multiple unnamed produces in manifest mode works", {
 # ============================================================================
 
 test_that(".is_file_ref detects file_ref structures", {
-  ref <- parade:::.make_file_ref(tempfile())
+  ref <- caravan:::.make_file_ref(tempfile())
   # Need a real file for .make_file_ref
   tmp <- withr::local_tempdir()
   path <- file.path(tmp, "test.rds")
   saveRDS(42, path)
-  ref <- parade:::.make_file_ref(path)
-  expect_true(parade:::.is_file_ref(ref))
-  expect_false(parade:::.is_file_ref("plain_string"))
-  expect_false(parade:::.is_file_ref(42))
-  expect_false(parade:::.is_file_ref(list(1, 2)))
-  expect_false(parade:::.is_file_ref(list(data.frame(a = 1))))
+  ref <- caravan:::.make_file_ref(path)
+  expect_true(caravan:::.is_file_ref(ref))
+  expect_false(caravan:::.is_file_ref("plain_string"))
+  expect_false(caravan:::.is_file_ref(42))
+  expect_false(caravan:::.is_file_ref(list(1, 2)))
+  expect_false(caravan:::.is_file_ref(list(data.frame(a = 1))))
 })
 
 test_that(".flatten_file_refs_for_env replaces file_refs with paths", {
   tmp <- withr::local_tempdir()
   path <- file.path(tmp, "test.rds")
   saveRDS(42, path)
-  ref <- parade:::.make_file_ref(path)
+  ref <- caravan:::.make_file_ref(path)
 
   env <- list(x = 10L, upstream.output = ref, name = "hello")
-  flat <- parade:::.flatten_file_refs_for_env(env)
+  flat <- caravan:::.flatten_file_refs_for_env(env)
   expect_equal(flat$x, 10L)
   expect_equal(flat$name, "hello")
   expect_equal(flat$upstream.output, path)
@@ -746,7 +745,7 @@ test_that("get_arg returns flat path for upstream file_refs in script_stage", {
   # Stage 2 script: reads upstream path via get_arg
   script2 <- file.path(tmp, "reader.R")
   writeLines(c(
-    'upstream_path <- parade::get_arg("gen.output")',
+    'upstream_path <- caravan::get_arg("gen.output")',
     'stopifnot(is.character(upstream_path))',
     'dat <- readRDS(upstream_path)',
     'saveRDS(dat$val + 1, output_path)'
@@ -774,11 +773,11 @@ test_that("get_file_ref returns full metadata when file_refs available", {
   tmp <- withr::local_tempdir()
   path <- file.path(tmp, "test.rds")
   saveRDS(42, path)
-  ref <- parade:::.make_file_ref(path)
+  ref <- caravan:::.make_file_ref(path)
 
   withr::local_options(parade.args.file_refs = list(upstream.output = ref))
   result <- get_file_ref("upstream.output")
-  expect_true(parade:::.is_file_ref(result))
+  expect_true(caravan:::.is_file_ref(result))
   expect_equal(result[[1]]$path, path)
 })
 

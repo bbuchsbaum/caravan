@@ -1,7 +1,7 @@
 # Paths --------------------------------------------------------------------
-#' Initialize parade path configuration
+#' Initialize caravan path configuration
 #'
-#' Sets up standard directory paths for parade projects, automatically
+#' Sets up standard directory paths for caravan projects, automatically
 #' detecting HPC environments and configuring appropriate scratch and
 #' data directories.
 #'
@@ -12,8 +12,12 @@
 #' @return Named list of configured paths (invisibly)
 #' @export
 #' @examples
-#' paths_init(profile = "local")
-#' paths_init(quiet = TRUE)
+#' local({
+#'   old <- options(parade.paths = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   paths_init(profile = "local")
+#'   paths_init(quiet = TRUE)
+#' })
 #' @details
 #' `profile = "auto"` switches to `"hpc"` when scheduler environment variables are
 #' detected (e.g., SLURM/PBS) or when common scratch variables (`SCRATCH`, `WORK`,
@@ -73,7 +77,7 @@ paths_init <- function(profile = c("auto", "local", "hpc"), create = FALSE, quie
 
   invisible(paths)
 }
-#' Get current parade path configuration
+#' Get current caravan path configuration
 #'
 #' @return Named list of configured paths
 #' @export
@@ -81,13 +85,17 @@ paths_init <- function(profile = c("auto", "local", "hpc"), create = FALSE, quie
 #' paths <- paths_get()
 #' paths$data
 paths_get <- function() getOption("parade.paths", paths_init(quiet = TRUE))
-#' Set specific parade paths
+#' Set specific caravan paths
 #'
 #' @param ... Named path specifications to update
 #' @return Updated paths list (invisibly)
 #' @export
 #' @examples
-#' paths_set(data = "/custom/data", artifacts = "/tmp/artifacts")
+#' local({
+#'   old <- options(parade.paths = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   paths_set(data = "/custom/data", artifacts = "/tmp/artifacts")
+#' })
 paths_set <- function(...) { x <- rlang::list2(...); cur <- paths_get(); for (nm in names(x)) cur[[nm]] <- x[[nm]]; options("parade.paths" = cur); invisible(cur) }
 
 #' Generate shell exports for the current path configuration
@@ -296,12 +304,32 @@ paths_export <- function(paths = paths_get(), aliases = NULL, header = TRUE) {
   if (length(roots) == 0L || length(outs) == 0L) return(FALSE)
 
   for (r in roots) {
-    prefix <- paste0(r, "/")
+    prefix <- if (endsWith(r, "/")) r else paste0(r, "/")
     for (o in outs) {
       if (identical(o, r) || startsWith(o, prefix)) return(TRUE)
     }
   }
   FALSE
+}
+
+# Resolve existing ancestors before comparing paths, including when the final
+# destination has not been created yet. normalizePath(..., mustWork = FALSE)
+# alone leaves symlinks unresolved when a descendant does not exist.
+.path_resolve_ancestors <- function(path) {
+  suffix <- character()
+  current <- path
+  while (!file.exists(current)) {
+    link <- Sys.readlink(current)
+    if (!is.na(link) && nzchar(link)) {
+      stop("Cannot resolve dangling symlink in alias path: ", current, call. = FALSE)
+    }
+    parent <- dirname(current)
+    if (identical(parent, current)) break
+    suffix <- c(basename(current), suffix)
+    current <- parent
+  }
+  base <- normalizePath(current, mustWork = FALSE, winslash = "/")
+  if (length(suffix)) do.call(file.path, as.list(c(base, suffix))) else base
 }
 
 .alias_join <- function(root, rel, allow_escape = FALSE) {
@@ -318,7 +346,7 @@ paths_export <- function(paths = paths_get(), aliases = NULL, header = TRUE) {
   out <- if (!nzchar(rel)) root_norm else normalizePath(file.path(root_norm, rel), mustWork = FALSE, winslash = "/")
 
   if (!isTRUE(allow_escape)) {
-    if (!.path_contains(out, root_norm)) {
+    if (!.path_contains(.path_resolve_ancestors(out), .path_resolve_ancestors(root_norm))) {
       stop("Resolved alias path escapes root: ", out, call. = FALSE)
     }
   }

@@ -1,4 +1,4 @@
-#' Validate parade path configuration
+#' Validate caravan path configuration
 #'
 #' Checks existence and writability of the configured path aliases set by
 #' [paths_init()]. Optionally creates missing directories.
@@ -148,7 +148,7 @@ paths_validate <- function(paths = paths_get(),
   identical(path, root) || startsWith(path, prefix)
 }
 
-#' Quick setup checks for parade
+#' Quick setup checks for caravan
 #'
 #' Runs a set of lightweight checks aimed at getting started quickly. This
 #' includes path validation and basic HPC-specific recommendations.

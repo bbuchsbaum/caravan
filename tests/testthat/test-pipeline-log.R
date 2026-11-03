@@ -1,11 +1,10 @@
 # Tests for R/pipeline_log.R — Pipeline Meta-Log
 
-devtools::load_all("/Users/bbuchsbaum/code/parade", quiet = TRUE)
 
 # --- .empty_errors_tbl() ---------------------------------------------------
 
 test_that(".empty_errors_tbl returns correct structure", {
-  tbl <- parade:::.empty_errors_tbl()
+  tbl <- caravan:::.empty_errors_tbl()
   expect_s3_class(tbl, "tbl_df")
   expect_equal(nrow(tbl), 0L)
   expect_equal(names(tbl), c("chunk_id", "row", "stage", "error_msg", "source", "context", "class"))
@@ -37,7 +36,7 @@ test_that(".scan_index_errors_structured finds errors in index files", {
   )
   saveRDS(res2, file.path(tmp, "index-0018.rds"))
 
-  result <- parade:::.scan_index_errors_structured(tmp)
+  result <- caravan:::.scan_index_errors_structured(tmp)
   expect_s3_class(result, "tbl_df")
   expect_equal(nrow(result), 2L)
   expect_equal(result$chunk_id, c(17L, 17L))
@@ -60,12 +59,12 @@ test_that(".scan_index_errors_structured returns empty for clean indices", {
   )
   saveRDS(res, file.path(tmp, "index-0001.rds"))
 
-  result <- parade:::.scan_index_errors_structured(tmp)
+  result <- caravan:::.scan_index_errors_structured(tmp)
   expect_equal(nrow(result), 0L)
 })
 
 test_that(".scan_index_errors_structured returns empty for missing dir", {
-  result <- parade:::.scan_index_errors_structured("/nonexistent/path/xyz123")
+  result <- caravan:::.scan_index_errors_structured("/nonexistent/path/xyz123")
   expect_equal(nrow(result), 0L)
 })
 
@@ -80,7 +79,7 @@ test_that(".scan_index_errors_structured handles skipped stages", {
   )
   saveRDS(res, file.path(tmp, "index-0001.rds"))
 
-  result <- parade:::.scan_index_errors_structured(tmp)
+  result <- caravan:::.scan_index_errors_structured(tmp)
   expect_equal(nrow(result), 0L)
 })
 
@@ -95,16 +94,16 @@ test_that(".scan_index_errors_structured handles real diag format (named list, c
 
   # stage id, with values from .parade_stage_diag() (error is a condition, not
   # a string).
-  diag_ok <- parade:::.parade_stage_diag(
+  diag_ok <- caravan:::.parade_stage_diag(
     ok = TRUE, skipped = FALSE, error = NULL,
     started_at = Sys.time(), host = "node01"
   )
-  diag_fail <- parade:::.parade_stage_diag(
+  diag_fail <- caravan:::.parade_stage_diag(
     ok = FALSE, skipped = FALSE,
     error = simpleError("singular matrix"),
     started_at = Sys.time(), host = "node01"
   )
-  diag_fail2 <- parade:::.parade_stage_diag(
+  diag_fail2 <- caravan:::.parade_stage_diag(
     ok = FALSE, skipped = FALSE,
     error = simpleError("file not found"),
     started_at = Sys.time(), host = "node01"
@@ -118,7 +117,7 @@ test_that(".scan_index_errors_structured handles real diag format (named list, c
   )
   saveRDS(res, file.path(tmp, "index-0001.rds"))
 
-  result <- parade:::.scan_index_errors_structured(tmp)
+  result <- caravan:::.scan_index_errors_structured(tmp)
   expect_s3_class(result, "tbl_df")
   expect_equal(nrow(result), 2L)
   expect_equal(result$chunk_id, c(1L, 1L))
@@ -136,15 +135,15 @@ test_that(".scan_index_errors_structured handles mixed ok/skipped/failed in real
   dir.create(tmp, recursive = TRUE)
   on.exit(unlink(tmp, recursive = TRUE))
 
-  diag_ok <- parade:::.parade_stage_diag(
+  diag_ok <- caravan:::.parade_stage_diag(
     ok = TRUE, skipped = FALSE, started_at = Sys.time()
   )
-  diag_skipped <- parade:::.parade_stage_diag(
+  diag_skipped <- caravan:::.parade_stage_diag(
     ok = FALSE, skipped = TRUE,
     error = simpleError("Cancelled by fail-fast"),
     started_at = Sys.time(), status = "cancelled"
   )
-  diag_fail <- parade:::.parade_stage_diag(
+  diag_fail <- caravan:::.parade_stage_diag(
     ok = FALSE, skipped = FALSE,
     error = simpleError("out of memory"),
     started_at = Sys.time()
@@ -156,7 +155,7 @@ test_that(".scan_index_errors_structured handles mixed ok/skipped/failed in real
   )
   saveRDS(res, file.path(tmp, "index-0005.rds"))
 
-  result <- parade:::.scan_index_errors_structured(tmp)
+  result <- caravan:::.scan_index_errors_structured(tmp)
   # Only the failed stage should be reported, not the skipped one
   expect_equal(nrow(result), 1L)
   expect_equal(result$stage, "model")
@@ -167,15 +166,15 @@ test_that(".scan_index_errors_structured handles mixed ok/skipped/failed in real
 # --- .error_signature() ----------------------------------------------------
 
 test_that(".error_signature produces consistent hashes", {
-  sig1 <- parade:::.error_signature(17, "model", 2, "singular matrix")
-  sig2 <- parade:::.error_signature(17, "model", 2, "singular matrix")
-  sig3 <- parade:::.error_signature(18, "model", 2, "singular matrix")
+  sig1 <- caravan:::.error_signature(17, "model", 2, "singular matrix")
+  sig2 <- caravan:::.error_signature(17, "model", 2, "singular matrix")
+  sig3 <- caravan:::.error_signature(18, "model", 2, "singular matrix")
   expect_identical(sig1, sig2)
   expect_false(sig1 == sig3)
 })
 
 test_that(".error_signature handles NAs", {
-  sig <- parade:::.error_signature(31, NA, NA, "SLURM FAILED")
+  sig <- caravan:::.error_signature(31, NA, NA, "SLURM FAILED")
   expect_true(is.character(sig) && nchar(sig) > 0)
 })
 
@@ -197,7 +196,7 @@ test_that(".pipeline_log_header writes formatted header", {
   )
   class(d) <- "parade_deferred"
 
-  parade:::.pipeline_log_header(d, tmp_log)
+  caravan:::.pipeline_log_header(d, tmp_log)
   lines <- readLines(tmp_log)
   expect_length(lines, 1L)
   expect_true(grepl("parade a1b2c3d4", lines[1]))
@@ -220,7 +219,7 @@ test_that(".pipeline_log_errors writes [ERROR] and [CRASH] lines", {
     context   = c("subject=s03", "subject=s12")
   )
 
-  parade:::.pipeline_log_errors(errs, tmp_log)
+  caravan:::.pipeline_log_errors(errs, tmp_log)
   lines <- readLines(tmp_log)
   expect_length(lines, 2L)
   expect_true(grepl("^\\[ERROR\\]", lines[1]))
@@ -263,7 +262,7 @@ test_that(".pipeline_log_summary writes [DONE] line", {
   )
   class(d) <- "parade_deferred"
 
-  parade:::.pipeline_log_summary(d, tmp_log)
+  caravan:::.pipeline_log_summary(d, tmp_log)
   lines <- readLines(tmp_log)
   expect_length(lines, 1L)
   expect_true(grepl("^\\[DONE\\]", lines[1]))
@@ -304,7 +303,7 @@ test_that(".pipeline_log_summary counts failed chunks", {
   )
   class(d) <- "parade_deferred"
 
-  parade:::.pipeline_log_summary(d, tmp_log)
+  caravan:::.pipeline_log_summary(d, tmp_log)
   lines <- readLines(tmp_log)
   expect_true(grepl("2/3 ok", lines[1]))
   expect_true(grepl("1 failed", lines[1]))
@@ -390,9 +389,9 @@ test_that(".pipeline_is_done works for local backend", {
     mock_status <- function(d, detail = FALSE) {
       tibble::tibble(total = 2L, resolved = 2L, unresolved = 0L)
     }
-    assignInNamespace("deferred_status", mock_status, "parade")
+    assignInNamespace("deferred_status", mock_status, "caravan")
 
-    expect_true(parade:::.pipeline_is_done(d))
+    expect_true(caravan:::.pipeline_is_done(d))
   })
 })
 
@@ -407,9 +406,9 @@ test_that(".pipeline_is_done returns FALSE when not done", {
     mock_status <- function(d, detail = FALSE) {
       tibble::tibble(total = 2L, resolved = 1L, unresolved = 1L)
     }
-    assignInNamespace("deferred_status", mock_status, "parade")
+    assignInNamespace("deferred_status", mock_status, "caravan")
 
-    expect_false(parade:::.pipeline_is_done(d))
+    expect_false(caravan:::.pipeline_is_done(d))
   })
 })
 
@@ -419,8 +418,8 @@ test_that(".log_append creates file and appends lines", {
   tmp_log <- tempfile("log_app_", fileext = ".log")
   on.exit(unlink(tmp_log))
 
-  parade:::.log_append(tmp_log, "line 1")
-  parade:::.log_append(tmp_log, c("line 2", "line 3"))
+  caravan:::.log_append(tmp_log, "line 1")
+  caravan:::.log_append(tmp_log, c("line 2", "line 3"))
 
   lines <- readLines(tmp_log)
   expect_equal(lines, c("line 1", "line 2", "line 3"))
@@ -481,8 +480,8 @@ test_that("multiple log headers append to same file", {
   )
   class(d2) <- "parade_deferred"
 
-  parade:::.pipeline_log_header(d1, tmp_log)
-  parade:::.pipeline_log_header(d2, tmp_log)
+  caravan:::.pipeline_log_header(d1, tmp_log)
+  caravan:::.pipeline_log_header(d2, tmp_log)
 
   lines <- readLines(tmp_log)
   expect_length(lines, 2L)
@@ -508,7 +507,7 @@ test_that(".pipeline_log_errors truncation works via parade_watch logic", {
   )
 
   # Log only first 2
-  parade:::.pipeline_log_errors(errs[1:2, ], tmp_log)
+  caravan:::.pipeline_log_errors(errs[1:2, ], tmp_log)
   lines <- readLines(tmp_log)
   expect_length(lines, 2L)
   expect_true(grepl("error 1", lines[1]))
@@ -551,12 +550,12 @@ test_that("full log format matches spec", {
   class(d) <- "parade_deferred"
 
   # Write header
-  parade:::.pipeline_log_header(d, tmp_log)
+  caravan:::.pipeline_log_header(d, tmp_log)
   # Write errors
   errs <- deferred_errors(d)
-  parade:::.pipeline_log_errors(errs, tmp_log)
+  caravan:::.pipeline_log_errors(errs, tmp_log)
   # Write summary
-  parade:::.pipeline_log_summary(d, tmp_log)
+  caravan:::.pipeline_log_summary(d, tmp_log)
 
   lines <- readLines(tmp_log)
   expect_length(lines, 3L)
@@ -612,7 +611,7 @@ test_that("deferred_collect waits for SLURM jobs before reading index files", {
   class(d) <- "parade_deferred"
 
   # Mock batchtools::loadRegistry and batchtools::waitForJobs
-  mockery::stub(deferred_collect, "batchtools::loadRegistry", function(...) {
+  mockery::stub(deferred_collect, "bt_load_registry", function(...) {
     load_called <<- TRUE
     "fake-registry"
   })
@@ -667,7 +666,7 @@ test_that("deferred_collect index-mode does NOT call waitForJobs for local backe
 # --- SLURM template variable preservation -----------------------------------
 
 test_that("SLURM template preserves PARADE_SCRATCH when already set", {
-  tmpl_path <- system.file("batchtools", "parade-slurm.tmpl", package = "parade")
+  tmpl_path <- system.file("batchtools", "parade-slurm.tmpl", package = "caravan")
   skip_if(!nzchar(tmpl_path), "template not found")
   tmpl <- readLines(tmpl_path)
 

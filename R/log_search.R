@@ -12,13 +12,24 @@
 #' @export
 #' @examples
 #' \donttest{
-#' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
-#' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
-#'   distribute(dist_local(by = "group"))
-#' d <- submit(fl)
-#' deferred_await(d, timeout = 60)
-#' logs <- find_logs(d)
+#' local({
+#'   old <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   example_dir <- tempfile("caravan-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
+#'   grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
+#'   fl <- flow(grid) |>
+#'     stage("calc", function(x) list(result = x^2),
+#'           schema = returns(result = dbl())) |>
+#'     distribute(dist_local(by = "group", within = "sequential"))
+#'   d <- submit(fl)
+#'   deferred_await(d, timeout = 60)
+#'   logs <- find_logs(d)
+#' })
 #' }
 find_logs <- function(x, failed_only = TRUE) {
   stopifnot(inherits(x, "parade_deferred"))
@@ -113,13 +124,24 @@ find_logs <- function(x, failed_only = TRUE) {
 #' @export
 #' @examples
 #' \donttest{
-#' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
-#' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
-#'   distribute(dist_local(by = "group"))
-#' d <- submit(fl)
-#' deferred_await(d, timeout = 60)
-#' hits <- search_logs(d, "Error|fatal|segfault", context = 5)
+#' local({
+#'   old <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   example_dir <- tempfile("caravan-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
+#'   grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
+#'   fl <- flow(grid) |>
+#'     stage("calc", function(x) list(result = x^2),
+#'           schema = returns(result = dbl())) |>
+#'     distribute(dist_local(by = "group", within = "sequential"))
+#'   d <- submit(fl)
+#'   deferred_await(d, timeout = 60)
+#'   hits <- search_logs(d, "Error|fatal|segfault", context = 5)
+#' })
 #' }
 search_logs <- function(x, pattern, context = 3L, max_matches = 50L, failed_only = TRUE) {
   logs <- find_logs(x, failed_only = failed_only)

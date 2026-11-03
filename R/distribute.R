@@ -1,5 +1,5 @@
 # Distribution -------------------------------------------------------------
-#' Add distribution settings to a parade flow
+#' Add distribution settings to a caravan flow
 #'
 #' @param fl A `parade_flow` object
 #' @param dist A distribution specification object (from `dist_local()`,
@@ -59,7 +59,7 @@ distribute <- function(fl, dist, ...) {
 #'     next group is launched (work-queue pattern). This is ideal for
 #'     packing a node with processes that each use their own internal
 #'     parallelism (e.g., the script calls `furrr`, `mclapply`, or uses
-#'     threaded BLAS/OpenMP). Parade does not manage the internal
+#'     threaded BLAS/OpenMP). Caravan does not manage the internal
 #'     parallelism — the script/function is free to use as many cores as
 #'     it needs.
 #' @param workers_within Integer; how many parallel workers (for
@@ -73,7 +73,7 @@ distribute <- function(fl, dist, ...) {
 #'   - `chunks_per_job = 1`: 100 groups → 100 futures
 #'   - `chunks_per_job = 5`: 100 groups → 20 futures (5 groups each)
 #' @param target_jobs Integer; the total number of futures to create.
-#'   Overrides `chunks_per_job` — parade divides groups evenly across this
+#'   Overrides `chunks_per_job` — caravan divides groups evenly across this
 #'   many futures. Useful when you want a fixed number of parallel units
 #'   regardless of how many groups exist.
 #'   - `target_jobs = 10` with 100 groups → 10 futures (10 groups each)
@@ -84,6 +84,9 @@ distribute <- function(fl, dist, ...) {
 #'   net when stage functions may leave background processes that prevent
 #'   clean exit.
 #'   `NULL` (default) means no timeout.
+#' @param parallel_opts Named list of GNU Parallel options used only when
+#'   `within = "parallel"`. Supported entries are `parallel_bin`, `resume`,
+#'   `joblog`, `tagstring`, `memfree`, and `extra_args`.
 #' @return A `parade_dist` object for local execution
 #' @export
 #' @examples
@@ -132,7 +135,7 @@ dist_local <- function(by = NULL,
 #'
 #' @section Two levels of parallelism:
 #'
-#' Parade distributes work in two layers:
+#' Caravan distributes work in two layers:
 #'
 #' 1. **Between jobs** (`by`): the grid is split into groups by the `by`
 #'    columns, and groups are packed into SLURM jobs. Each job is an
@@ -147,11 +150,11 @@ dist_local <- function(by = NULL,
 #' `partition`, `qos`, `time`, `mem`, `nodes`, `ntasks`,
 #' `ntasks_per_node`, `cpus_per_task`.
 #'
-#' Parade-specific resource keys:
+#' Caravan-specific resource keys:
 #' \describe{
 #'   \item{`modules`}{Character vector of environment modules to load on
 #'     compute nodes (e.g., `c("StdEnv/2023", "r/4.4.0")`). By default
-#'     parade captures the modules loaded in your current R session and
+#'     caravan captures the modules loaded in your current R session and
 #'     replays them on the nodes. Set `modules = character(0)` to suppress
 #'     all module handling.}
 #' }
@@ -178,7 +181,7 @@ dist_local <- function(by = NULL,
 #'     (work-queue pattern). This is the right choice when you want to
 #'     pack a full node with multiple processes that each use their own
 #'     internal parallelism (e.g., a script that calls `furrr`,
-#'     `mclapply`, or relies on threaded BLAS/OpenMP). Parade manages the
+#'     `mclapply`, or relies on threaded BLAS/OpenMP). Caravan manages the
 #'     pool; the script manages its own cores.
 #' @param workers_within Integer; how many parallel workers (for
 #'   `"multisession"` / `"multicore"`) or concurrent R processes (for
@@ -186,7 +189,7 @@ dist_local <- function(by = NULL,
 #'   Defaults to `NULL`, which reads `SLURM_CPUS_PER_TASK` at runtime
 #'   (i.e., matches your `cpus_per_task` resource request).
 #' @param template Path to the SLURM batch template file. Defaults to
-#'   parade's built-in template (`slurm_template()`). Override for custom
+#'   caravan's built-in template (`slurm_template()`). Override for custom
 #'   preambles, module stacks, or site-specific `#SBATCH` flags.
 #' @param resources Named list of SLURM resource requests. These are
 #'   passed to the batch template as `#SBATCH` flags. Common keys:
@@ -198,7 +201,7 @@ dist_local <- function(by = NULL,
 #'   - `chunks_per_job = 1`: 81 groups → 81 SLURM jobs
 #'   - `chunks_per_job = 3`: 81 groups → 27 SLURM jobs (3 groups each)
 #' @param target_jobs Integer; the total number of SLURM jobs to create.
-#'   Overrides `chunks_per_job` — parade divides groups evenly across
+#'   Overrides `chunks_per_job` — caravan divides groups evenly across
 #'   this many jobs. Useful when you have a fixed allocation and want to
 #'   fill it.
 #'   - `target_jobs = 10` with 81 groups → 10 jobs (~8 groups each)
@@ -209,6 +212,9 @@ dist_local <- function(by = NULL,
 #'   net when stage functions may leave background processes that prevent
 #'   clean exit.
 #'   `NULL` (default) means no timeout.
+#' @param parallel_opts Named list of GNU Parallel options used only when
+#'   `within = "parallel"`. Supported entries are `parallel_bin`, `resume`,
+#'   `joblog`, `tagstring`, `memfree`, and `extra_args`.
 #' @return A `parade_dist` object for SLURM execution
 #' @export
 #' @examples
@@ -473,7 +479,7 @@ dist_slurm_profile <- function(profile,
 #' @export
 #' @examples
 #' template_path <- slurm_template()
-slurm_template <- function() system.file("batchtools", "parade-slurm.tmpl", package = "parade")
+slurm_template <- function() system.file("batchtools", "parade-slurm.tmpl", package = "caravan")
 
 # Worker resolution --------------------------------------------------------
 
@@ -499,6 +505,23 @@ slurm_template <- function() system.file("batchtools", "parade-slurm.tmpl", pack
     stop("parallel_opts$resume must be TRUE or FALSE", call. = FALSE)
   }
   opts
+}
+
+#' Split grid row positions into groups without losing missing values.
+#'
+#' `interaction()` assigns `NA` to rows with missing grouping values, and
+#' `split()` then omits those rows. vctrs groups missing values as keys.
+#' @keywords internal
+.parade_group_rows <- function(grid, by = character()) {
+  n <- nrow(grid)
+  if (n == 0L) return(list())
+  if (is.null(by) || length(by) == 0L) return(as.list(seq_len(n)))
+  if (!all(by %in% names(grid))) {
+    stop("Grouping columns not found in grid: ",
+         paste(setdiff(by, names(grid)), collapse = ", "), call. = FALSE)
+  }
+  group_id <- vctrs::vec_group_id(grid[by])
+  split(seq_len(n), group_id)
 }
 
 #' Detect available cores from the runtime environment
@@ -686,7 +709,7 @@ resolve_workers <- function(dist, n_groups = NULL) {
 #' @examples
 #' grid <- data.frame(subject = paste0("sub", 1:40), x = seq_len(40))
 #' fl <- flow(grid) |>
-#'   stage("sq", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("sq", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "subject", within = "callr",
 #'                         workers_within = 10L))
 #' resolve_dist_plan(fl)
@@ -716,13 +739,7 @@ resolve_dist_plan <- function(fl) {
   within <- dist$within %||% "sequential"
 
   # --- Groups ---
-  if (length(dist$by) == 0L || is.null(dist$by)) {
-    n_groups <- nrow(grid)
-  } else {
-    key <- tibble::as_tibble(grid[dist$by])
-    grp_id <- interaction(key, drop = TRUE, lex.order = TRUE)
-    n_groups <- nlevels(grp_id)
-  }
+  n_groups <- length(.parade_group_rows(grid, dist$by))
 
   # --- Jobs ---
   if (!is.null(dist$target_jobs)) {
@@ -771,7 +788,7 @@ resolve_dist_plan <- function(fl) {
     }
     if (cores_per_worker < 1.5) {
       warns <- c(warns, sprintf(
-        "Only %.1f cores per callr process — each process may contend for CPU. Reduce workers_within or request more cpus_per_task.",
+        "Only %.1f cores per callr process - each process may contend for CPU. Reduce workers_within or request more cpus_per_task.",
         cores_per_worker
       ))
     }

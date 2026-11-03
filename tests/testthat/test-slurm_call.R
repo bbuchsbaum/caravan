@@ -163,7 +163,7 @@ test_that("slurm_call writes a parseable runner.R for long .packages lists", {
     )
   })
 
-  long_pkgs <- c("neuroim2", "rMVPA", "bidser", "dplyr", "futurehelper", "parade")
+  long_pkgs <- c("neuroim2", "rMVPA", "bidser", "dplyr", "futurehelper", "caravan")
   invisible(slurm_call(function(x) x, x = 1, packages = long_pkgs))
 
   expect_false(is.null(captured_script))

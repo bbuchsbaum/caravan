@@ -23,18 +23,29 @@ with suggestions and logs)}
 A \code{parade_failure_report} object (invisibly), printed as side effect
 }
 \description{
-The primary entry point for understanding what went wrong in a parade
+The primary entry point for understanding what went wrong in a caravan
 pipeline run. Provides classified errors, actionable suggestions,
 and log locations.
 }
 \examples{
 \donttest{
-grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
-fl <- flow(grid) |>
-  stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
-  distribute(dist_local(by = "group"))
-d <- submit(fl)
-deferred_await(d, timeout = 60)
-wtf(d)
+local({
+  old <- options(parade.paths = NULL, parade.log_path = NULL)
+  on.exit(options(old), add = TRUE)
+  example_dir <- tempfile("caravan-example-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(profile = "local", quiet = TRUE)
+  paths_set(registry = file.path(example_dir, "registry"),
+            artifacts = file.path(example_dir, "artifacts"))
+  grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
+  fl <- flow(grid) |>
+    stage("calc", function(x) list(result = x^2),
+          schema = returns(result = dbl())) |>
+    distribute(dist_local(by = "group", within = "sequential"))
+  d <- submit(fl)
+  deferred_await(d, timeout = 60)
+  wtf(d)
+})
 }
 }

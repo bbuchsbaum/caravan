@@ -30,7 +30,7 @@ A tibble with one row per artifact.
 These helpers make artifacts discoverable by scanning a directory for sink
 sidecars (e.g., \verb{*.rds.json}) and combining file stats with stored metadata.
 
-Scans a directory for Parade sink sidecars (\verb{<artifact>.json}) and returns a
+Scans a directory for Caravan sink sidecars (\verb{<artifact>.json}) and returns a
 tibble that can be filtered/searched.
 }
 \examples{

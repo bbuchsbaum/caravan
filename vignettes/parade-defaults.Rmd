@@ -1,5 +1,5 @@
 ---
-title: Using SLURM Defaults in parade
+title: Using SLURM Defaults in caravan
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{8. SLURM Defaults: site and project configuration}
@@ -21,7 +21,7 @@ includes:
 
 ## What are defaults and why use them?
 
-The parade package allows you to set **site/project defaults** for SLURM job submission, making your R code portable across different clusters and reducing repetitive resource specifications. Instead of specifying the same SLURM parameters (partition, memory, CPU count, etc.) in every job submission, you can configure them once and reuse them throughout your project.
+The caravan package allows you to set **site/project defaults** for SLURM job submission, making your R code portable across different clusters and reducing repetitive resource specifications. Instead of specifying the same SLURM parameters (partition, memory, CPU count, etc.) in every job submission, you can configure them once and reuse them throughout your project.
 
 Key benefits of using defaults:
 
@@ -35,7 +35,7 @@ Defaults are stored in a JSON configuration file and are accessible from R throu
 ## Quick start
 
 ```r
-library(parade)
+library(caravan)
 paths_init()
 
 # Set up defaults for your cluster environment
@@ -64,14 +64,14 @@ When you call `submit_slurm()`, it automatically merges your call's `resources` 
 >
 > ```r
 > flow(grid) |>
->   stage("analyze", analyze_fn) |>
+>   stage("analyze", analyze_fn, schema = returns(result = dbl())) |>
 >   distribute(dist_slurm(resources = slurm_resources(profile = "standard")))
 > ```
 
 
 ## Configuration file
 
-Parade searches for configuration files in the following order:
+Caravan searches for configuration files in the following order:
 
 1. `PARADE_CONFIG` environment variable (exact file path), if set
 2. `<project>/parade.json`, if present  
@@ -94,7 +94,7 @@ The configuration file uses JSON format. Here's an example showing typical defau
 }
 ```
 
-Note that `null` in JSON corresponds to `NA` in R, which tells parade to omit that parameter entirely from the SLURM submission.
+Note that `null` in JSON corresponds to `NA` in R, which tells caravan to omit that parameter entirely from the SLURM submission.
 
 ## Working with defaults programmatically
 

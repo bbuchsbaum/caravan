@@ -2,12 +2,12 @@
 % Please edit documentation in R/ergonomics.R
 \name{with_parade_options}
 \alias{with_parade_options}
-\title{Temporarily set parade options for code execution}
+\title{Temporarily set caravan options for code execution}
 \usage{
 with_parade_options(..., code)
 }
 \arguments{
-\item{...}{Named parade option values to set temporarily}
+\item{...}{Named caravan option values to set temporarily}
 
 \item{code}{Code to execute with modified options}
 }
@@ -15,7 +15,7 @@ with_parade_options(..., code)
 Result of executing the code
 }
 \description{
-Temporarily set parade options for code execution
+Temporarily set caravan options for code execution
 }
 \examples{
 with_parade_options(error = "stop", code = {

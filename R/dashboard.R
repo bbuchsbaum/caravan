@@ -485,7 +485,7 @@
   invisible(c(list(job = job), out))
 }
 
-#' Unified dashboard for parade jobs and runs
+#' Unified dashboard for caravan jobs and runs
 #'
 #' Provides a single "mission control" entry point for monitoring submitted
 #' work. It supports:
@@ -520,8 +520,21 @@
 #' @export
 #' @examples
 #' \donttest{
-#' job <- slurm_call(function(x) x^2, x = 2, engine = "local")
-#' parade_dashboard(job)
+#' local({
+#'   old_paths <- options(parade.paths = NULL)
+#'   on.exit(options(old_paths), add = TRUE)
+#'   example_dir <- tempfile("caravan-dashboard-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(quiet = TRUE)
+#'   paths_set(
+#'     scratch = example_dir,
+#'     artifacts = file.path(example_dir, "artifacts"),
+#'     registry = file.path(example_dir, "registry")
+#'   )
+#'   job <- slurm_call(function(x) x^2, x = 2, engine = "local")
+#'   parade_dashboard(job)
+#' })
 #' }
 parade_dashboard <- function(x = NULL,
                              action = c(

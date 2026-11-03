@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)  # Load parade package from source
 library(tibble)
 testthat::skip_if_not_installed("mockery")
 library(mockery)
@@ -404,8 +403,8 @@ test_that("submit() derives a readable default label from the final stage", {
 
   handle <- submit(fl, mode = "index")
 
-  expect_equal(handle$label, "parade-double")
-  expect_true(grepl("parade-double", basename(handle$registry_dir), fixed = TRUE))
+  expect_equal(handle$label, "parade-s1")
+  expect_true(grepl("parade-s1", basename(handle$registry_dir), fixed = TRUE))
 })
 
 test_that("submit() accepts an explicit human-readable label", {
@@ -475,8 +474,11 @@ test_that("submit() with SLURM backend (mocked)", {
     distribute(dist_slurm(by = "group"))
   
   # Mock batchtools functions
-  mock_makeRegistry <- mockery::mock(list(file.dir = temp_dir))
-  mock_makeClusterFunctions <- mockery::mock(list())
+  mock_makeRegistry <- function(reg_dir, ...) {
+    dir.create(reg_dir, recursive = TRUE, showWarnings = FALSE)
+    list(file.dir = reg_dir)
+  }
+  mock_makeClusterFunctions <- function(...) list()
   mock_batchMap <- mockery::mock(NULL)
   mock_submitJobs <- mockery::mock(NULL)
   mock_getJobTable <- mockery::mock(
@@ -485,17 +487,22 @@ test_that("submit() with SLURM backend (mocked)", {
   
   testthat::with_mocked_bindings(
     {
-      handle <- submit(fl, mode = "results")
-      
-      expect_s3_class(handle, "parade_deferred")
-      expect_equal(handle$backend, "slurm")
-      expect_equal(handle$jobs, c(1001, 1002))
+      testthat::with_mocked_bindings(
+        {
+          handle <- submit(fl, mode = "results")
+          expect_s3_class(handle, "parade_deferred")
+          expect_equal(handle$backend, "slurm")
+          expect_equal(handle$jobs, c(1001, 1002))
+        },
+        batchMap = mock_batchMap,
+        submitJobs = mock_submitJobs,
+        getJobTable = mock_getJobTable,
+        .package = "batchtools"
+      )
     },
-    `batchtools::makeRegistry` = mock_makeRegistry,
-    `batchtools::makeClusterFunctionsSlurm` = mock_makeClusterFunctions,
-    `batchtools::batchMap` = mock_batchMap,
-    `batchtools::submitJobs` = mock_submitJobs,
-    `batchtools::getJobTable` = mock_getJobTable
+    bt_make_registry = mock_makeRegistry,
+    make_parade_slurm_cf = mock_makeClusterFunctions,
+    .package = "caravan"
   )
 })
 
@@ -568,7 +575,7 @@ test_that(".parade_execute_chunk() handles index mode", {
   index_dir <- file.path(temp_dir, "index")
   dir.create(index_dir)
   
-  result <- parade:::.parade_execute_chunk(
+  result <- caravan:::.parade_execute_chunk(
     fl = fl,
     idx_vec = list(1:2),
     index_dir = index_dir,
@@ -589,7 +596,7 @@ test_that(".parade_execute_chunk() handles results mode", {
   fl <- flow(tibble(x = 1:2)) |>
     stage("s1", function(x) list(y = x * 3), schema = schema(y = dbl()))
   
-  result <- parade:::.parade_execute_chunk(
+  result <- caravan:::.parade_execute_chunk(
     fl = fl,
     idx_vec = list(1:2),
     index_dir = tempdir(),
@@ -608,7 +615,7 @@ test_that(".parade_execute_chunk() handles empty results", {
   fl <- flow(tibble(x = 1:2), error = "omit") |>
     stage("fail", function(x) stop("always fails"), schema = schema(y = dbl()))
   
-  result <- parade:::.parade_execute_chunk(
+  result <- caravan:::.parade_execute_chunk(
     fl = fl,
     idx_vec = list(1:2),
     index_dir = tempdir(),
@@ -660,18 +667,22 @@ test_that("deferred_status() for SLURM backend (mocked)", {
   
   testthat::with_mocked_bindings(
     {
-      status <- deferred_status(handle, detail = FALSE)
-      
-      expect_s3_class(status, "tbl_df")
-      expect_equal(status$pending, 1)
-      expect_equal(status$started, 2)
-      expect_equal(status$running, 1)
-      expect_equal(status$done, 3)
-      expect_equal(status$error, 0)
+      testthat::with_mocked_bindings(
+        {
+          status <- deferred_status(handle, detail = FALSE)
+          expect_s3_class(status, "tbl_df")
+          expect_equal(status$pending, 1)
+          expect_equal(status$started, 2)
+          expect_equal(status$running, 1)
+          expect_equal(status$done, 3)
+          expect_equal(status$error, 0)
+        },
+        getStatus = mock_getStatus,
+        .package = "batchtools"
+      )
     },
-    loadRegistry = mock_loadRegistry,
-    getStatus = mock_getStatus,
-    .package = "batchtools"
+    bt_load_registry = mock_loadRegistry,
+    .package = "caravan"
   )
 })
 
@@ -697,16 +708,20 @@ test_that("deferred_status() with detail for SLURM (mocked)", {
   
   testthat::with_mocked_bindings(
     {
-      status <- deferred_status(handle, detail = TRUE)
-      
-      expect_s3_class(status, "tbl_df")
-      expect_equal(nrow(status), 3)
-      expect_true("job.id" %in% names(status))
-      expect_true("status" %in% names(status))
+      testthat::with_mocked_bindings(
+        {
+          status <- deferred_status(handle, detail = TRUE)
+          expect_s3_class(status, "tbl_df")
+          expect_equal(nrow(status), 3)
+          expect_true("job.id" %in% names(status))
+          expect_true("status" %in% names(status))
+        },
+        getJobTable = mock_getJobTable,
+        .package = "batchtools"
+      )
     },
-    loadRegistry = mock_loadRegistry,
-    getJobTable = mock_getJobTable,
-    .package = "batchtools"
+    bt_load_registry = mock_loadRegistry,
+    .package = "caravan"
   )
 })
 
@@ -747,14 +762,18 @@ test_that("deferred_await() for SLURM backend (mocked)", {
   
   testthat::with_mocked_bindings(
     {
-      result <- deferred_await(handle, timeout = 10, poll = 2)
-      
-      expect_s3_class(result, "parade_deferred")
-      mockery::expect_called(mock_waitForJobs, 1)
+      testthat::with_mocked_bindings(
+        {
+          result <- deferred_await(handle, timeout = 10, poll = 2)
+          expect_s3_class(result, "parade_deferred")
+          mockery::expect_called(mock_waitForJobs, 1)
+        },
+        waitForJobs = mock_waitForJobs,
+        .package = "batchtools"
+      )
     },
-    loadRegistry = mock_loadRegistry,
-    waitForJobs = mock_waitForJobs,
-    .package = "batchtools"
+    bt_load_registry = mock_loadRegistry,
+    .package = "caravan"
   )
 })
 
@@ -828,15 +847,19 @@ test_that("deferred_cancel() for SLURM backend (mocked)", {
   
   testthat::with_mocked_bindings(
     {
-      result <- deferred_cancel(handle, which = "running")
-      
-      expect_s3_class(result, "parade_deferred")
-      mockery::expect_called(mock_killJobs, 1)
+      testthat::with_mocked_bindings(
+        {
+          result <- deferred_cancel(handle, which = "running")
+          expect_s3_class(result, "parade_deferred")
+          mockery::expect_called(mock_killJobs, 1)
+        },
+        findRunning = mock_findRunning,
+        killJobs = mock_killJobs,
+        .package = "batchtools"
+      )
     },
-    loadRegistry = mock_loadRegistry,
-    findRunning = mock_findRunning,
-    killJobs = mock_killJobs,
-    .package = "batchtools"
+    bt_load_registry = mock_loadRegistry,
+    .package = "caravan"
   )
 })
 
@@ -858,14 +881,19 @@ test_that("deferred_cancel() handles 'all' parameter", {
   
   testthat::with_mocked_bindings(
     {
-      result <- deferred_cancel(handle, which = "all")
-      expect_s3_class(result, "parade_deferred")
-      mockery::expect_called(mock_killJobs, 1)
+      testthat::with_mocked_bindings(
+        {
+          result <- deferred_cancel(handle, which = "all")
+          expect_s3_class(result, "parade_deferred")
+          mockery::expect_called(mock_killJobs, 1)
+        },
+        findJobs = mock_findJobs,
+        killJobs = mock_killJobs,
+        .package = "batchtools"
+      )
     },
-    loadRegistry = mock_loadRegistry,
-    findJobs = mock_findJobs,
-    killJobs = mock_killJobs,
-    .package = "batchtools"
+    bt_load_registry = mock_loadRegistry,
+    .package = "caravan"
   )
 })
 
@@ -961,15 +989,19 @@ test_that("deferred_collect() for SLURM with results (mocked)", {
 
   testthat::with_mocked_bindings(
     {
-      collected <- deferred_collect(handle, how = "results")
-
-      expect_s3_class(collected, "tbl_df")
-      expect_equal(nrow(collected), 4)
+      testthat::with_mocked_bindings(
+        {
+          collected <- deferred_collect(handle, how = "results")
+          expect_s3_class(collected, "tbl_df")
+          expect_equal(nrow(collected), 4)
+        },
+        waitForJobs = function(...) invisible(NULL),
+        reduceResultsList = function(...) list(result1, result2),
+        .package = "batchtools"
+      )
     },
-    loadRegistry = function(...) list(),
-    waitForJobs = function(...) invisible(NULL),
-    reduceResultsList = function(...) list(result1, result2),
-    .package = "batchtools"
+    bt_load_registry = function(...) list(),
+    .package = "caravan"
   )
 })
 
@@ -1079,4 +1111,12 @@ test_that("deferred operations validate handle class", {
     deferred_collect(fake_handle),
     "parade_deferred"
   )
+})
+
+test_that("grouping retains rows with missing grouping values", {
+  groups <- caravan:::.parade_group_rows(
+    tibble::tibble(g = c("a", NA_character_, "a", NA_character_)), "g"
+  )
+  expect_equal(sort(unlist(groups, use.names = FALSE)), 1:4)
+  expect_equal(unname(vapply(groups, length, integer(1))), c(2L, 2L))
 })

@@ -1,6 +1,5 @@
 # Tests for R/wtf.R — "What went wrong?" failure diagnosis
 
-devtools::load_all("/Users/bbuchsbaum/code/parade", quiet = TRUE)
 
 # --- wtf.data.frame() --------------------------------------------------------
 
@@ -62,7 +61,7 @@ test_that("suggestions are generated for OOM errors", {
     list(class = "oom", suggestion = "Increase memory to 24G"),
     list(class = "oom", suggestion = "Increase memory to 24G")
   )
-  sug <- parade:::.generate_suggestions(classified, list())
+  sug <- caravan:::.generate_suggestions(classified, list())
   expect_true(length(sug) >= 1L)
   expect_true(grepl("OOM", sug[1]))
 })
@@ -71,13 +70,13 @@ test_that("suggestions are generated for timeout errors", {
   classified <- list(
     list(class = "timeout", suggestion = "Try time = 4:00:00")
   )
-  sug <- parade:::.generate_suggestions(classified, list())
+  sug <- caravan:::.generate_suggestions(classified, list())
   expect_true(length(sug) >= 1L)
   expect_true(grepl("timeout", sug[1]))
 })
 
 test_that("no suggestions for empty errors", {
-  sug <- parade:::.generate_suggestions(list(), list())
+  sug <- caravan:::.generate_suggestions(list(), list())
   expect_equal(length(sug), 0L)
 })
 

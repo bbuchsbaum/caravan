@@ -4,7 +4,7 @@
 \alias{run_summary}
 \alias{run_summary.data.frame}
 \alias{run_summary.parade_deferred}
-\title{Summarize a parade run}
+\title{Summarize a caravan run}
 \usage{
 run_summary(x, ...)
 

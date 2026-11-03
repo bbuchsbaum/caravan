@@ -27,7 +27,7 @@ parade_stage(
 \code{NULL} (invisible), called for side effect.
 }
 \description{
-Use this in standalone \code{Rscript} jobs submitted through parade when you want
+Use this in standalone \code{Rscript} jobs submitted through caravan when you want
 the dashboard to show a clear current stage rather than forcing operators to
 infer progress from stdout/stderr logs.
 }

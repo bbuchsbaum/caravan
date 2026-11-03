@@ -2,7 +2,7 @@
 % Please edit documentation in R/completion_manifest.R
 \name{.manifest_clean_params}
 \alias{.manifest_clean_params}
-\title{Extract and sort grid-only params from a row}
+\title{Extract and sort parameters used for completion-manifest identity}
 \usage{
 .manifest_clean_params(row)
 }
@@ -13,7 +13,8 @@
 A sorted named list of grid-only parameters.
 }
 \description{
-Drops internal columns (\code{.grid_id}, \code{.grid_hash}) and
-upstream \code{stage.field} columns, then sorts by name.
+Drops only caravan's internal bookkeeping columns. Dots are valid in user
+parameter names, so they must remain part of the identity rather than being
+mistaken for upstream stage output columns.
 }
 \keyword{internal}

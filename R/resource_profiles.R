@@ -70,7 +70,7 @@ profile <- function(name = NULL, base = NULL) {
 #' resources <- res_time(profile(), "8:00:00")
 #' }
 #' 
-#' @note masks stats::time when parade is attached; use res_time() to avoid masking.
+#' @note masks stats::time when caravan is attached; use res_time() to avoid masking.
 #' @export
 time <- function(profile, value) {
   UseMethod("time")
@@ -80,7 +80,7 @@ time <- function(profile, value) {
 time.parade_profile <- function(profile, value) {
   if (isTRUE(getOption("parade.warn_deprecated_time", TRUE))) {
     rlang::warn(
-      "parade::time() (resource profiles) is deprecated and masks stats::time(). Use res_time() instead.",
+      "caravan::time() (resource profiles) is deprecated and masks stats::time(). Use res_time() instead.",
       class = "parade_deprecated_time",
       frequency = "once"
     )
@@ -322,12 +322,12 @@ print.parade_profile <- function(x, ...) {
 #' Store a resource profile in the registry for reuse across jobs.
 #' Profiles can be retrieved by name and used as base profiles or
 #' referenced by string shorthand. Site-specific profiles are supplied by users
-#' and projects; parade does not embed site names or site resource values.
+#' and projects; caravan does not embed site names or site resource values.
 #' 
 #' @param name Name for the profile
 #' @param profile Resource profile object or list
 #' @param overwrite Whether to overwrite an existing in-session profile
-#' @param persist Whether to save the profile in the user-managed parade config
+#' @param persist Whether to save the profile in the user-managed caravan config
 #'   so it is available in future R sessions. Lists may include package-side
 #'   safety metadata `whole_node` and `cores_per_node`.
 #' @return Invisible NULL
@@ -439,7 +439,7 @@ profile_list <- function(details = FALSE) {
 #' 
 #' @param name Name of the profile
 #' @return Resource profile object, or NULL if not found. User-configured
-#'   profiles take precedence over parade's generic built-in profiles.
+#'   profiles take precedence over caravan's generic built-in profiles.
 #' 
 #' @examples
 #' \donttest{

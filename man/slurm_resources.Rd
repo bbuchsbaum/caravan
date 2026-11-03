@@ -24,7 +24,7 @@ profile name may also be supplied directly as \code{resources}.
 \details{
 Profiles may include \code{whole_node = TRUE} or a positive
 \code{cores_per_node} value. These fields describe site allocation policy for
-parade's fan-out checks; they are not rendered as \verb{#SBATCH} directives.
+caravan's fan-out checks; they are not rendered as \verb{#SBATCH} directives.
 }
 \examples{
 slurm_resources(list(time = "2h"), profile = "default")

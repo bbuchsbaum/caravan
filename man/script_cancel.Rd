@@ -2,7 +2,7 @@
 % Please edit documentation in R/script_jobs.R
 \name{script_cancel}
 \alias{script_cancel}
-\title{Cancel a running SLURM script job}
+\title{Cancel queued or running SLURM script jobs}
 \usage{
 script_cancel(job)
 }
@@ -13,7 +13,7 @@ script_cancel(job)
 The input job object (invisibly)
 }
 \description{
-Cancel a running SLURM script job
+Cancel queued or running SLURM script jobs
 }
 \examples{
 \donttest{

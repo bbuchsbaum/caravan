@@ -13,7 +13,7 @@ profile_register(name, profile, overwrite = FALSE, persist = FALSE)
 
 \item{overwrite}{Whether to overwrite an existing in-session profile}
 
-\item{persist}{Whether to save the profile in the user-managed parade config
+\item{persist}{Whether to save the profile in the user-managed caravan config
 so it is available in future R sessions. Lists may include package-side
 safety metadata \code{whole_node} and \code{cores_per_node}.}
 }
@@ -24,7 +24,7 @@ Invisible NULL
 Store a resource profile in the registry for reuse across jobs.
 Profiles can be retrieved by name and used as base profiles or
 referenced by string shorthand. Site-specific profiles are supplied by users
-and projects; parade does not embed site names or site resource values.
+and projects; caravan does not embed site names or site resource values.
 }
 \examples{
 \donttest{

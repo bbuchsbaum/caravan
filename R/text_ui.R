@@ -36,7 +36,7 @@ script_top <- function(job, refresh = 2, nlog = 30, clear = TRUE) {
     met <- try(script_metrics(job), silent = TRUE)
     if (inherits(met, "try-error")) { cat("Cannot fetch metrics (Slurm tools available?).\n"); break }
     if (isTRUE(clear) && interactive()) cat("\033[2J\033[H")
-    cat("parade::script_top  ", frame, "\n", sep = "")
+    cat("caravan::script_top  ", frame, "\n", sep = "")
     cat("Job: ", met$name, "   (", met$job_id, ")\n", sep = "")
     cat("Node: ", met$node %||% "?", "   State: ", met$state, "   Uptime: ", format(Sys.time() - started, digits = 2), "\n", sep = "")
     cpu_bar <- .bar(met$cpu_pct %||% NA_real_, width = max(10, getOption("width", 80) - 40))
@@ -99,7 +99,7 @@ jobs_top <- function(jobs, refresh = 3, nlog = 20, clear = TRUE) {
     if (!all(ok)) { bad <- which(!ok); message("Failed to fetch metrics for ", length(bad), " job(s).") }
     mets <- mets[ok]
     if (isTRUE(clear) && interactive()) cat("\033[2J\033[H")
-    cat("parade::jobs_top  ", frame, "\n", sep = "")
+    cat("caravan::jobs_top  ", frame, "\n", sep = "")
     # summary line
     states <- vapply(mets, function(m) m$state %||% "?", character(1))
     tab <- table(states, useNA = "ifany")
@@ -201,7 +201,8 @@ jobs_top <- function(jobs, refresh = 3, nlog = 20, clear = TRUE) {
       if (is.null(diag)) next
       for (dd in diag) {
         if (!isTRUE(dd$ok) && !isTRUE(dd$skipped)) {
-          msg <- dd$error %||% dd$message %||% "unknown error"
+          msg <- dd$error_message %||% dd$error %||% dd$message %||% "unknown error"
+          if (inherits(msg, "condition")) msg <- conditionMessage(msg)
           if (is.character(msg) && length(msg) == 1L) {
             chunk_errors <- c(chunk_errors,
               sprintf("Chunk %s, row %d: Stage '%s' failed: %s",
@@ -380,7 +381,7 @@ jobs_top <- function(jobs, refresh = 3, nlog = 20, clear = TRUE) {
   if (requireNamespace("batchtools", quietly = TRUE)) {
     reg <- tryCatch(
       suppressMessages(suppressWarnings(
-        batchtools::loadRegistry(d$registry_dir, writeable = FALSE)
+        bt_load_registry(d$registry_dir, writeable = FALSE)
       )),
       error = function(e) NULL
     )
@@ -600,13 +601,23 @@ jobs_top <- function(jobs, refresh = 3, nlog = 20, clear = TRUE) {
 #' @export
 #' @examples
 #' \donttest{
-#' grid <- data.frame(x = 1:6, g = rep(1:3, 2))
-#' fl <- flow(grid) |>
-#'   stage("s", function(x) { Sys.sleep(1); list(y = x^2) },
-#'          schema = returns(y = dbl())) |>
-#'   distribute(dist_local(by = "g"))
-#' d <- submit(fl)
-#' deferred_top(d, refresh = 1, once = TRUE)
+#' local({
+#'   old <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   example_dir <- tempfile("caravan-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
+#'   grid <- data.frame(x = 1:6, g = rep(1:3, 2))
+#'   fl <- flow(grid) |>
+#'     stage("s", function(x) list(y = x^2), schema = returns(y = dbl())) |>
+#'     distribute(dist_local(by = "g", within = "sequential"))
+#'   d <- submit(fl)
+#'   deferred_top(d, refresh = 1, once = TRUE)
+#'   deferred_await(d, timeout = 60)
+#' })
 #' }
 deferred_top <- function(d, refresh = 3, nlog = 20, clear = TRUE, once = FALSE, max_rows = 20L) {
   stopifnot(inherits(d, "parade_deferred"))
@@ -661,7 +672,7 @@ deferred_top <- function(d, refresh = 3, nlog = 20, clear = TRUE, once = FALSE, 
     buf <- character()
     .l <- function(...) buf <<- c(buf, paste0(...))
 
-    .l("parade::deferred_top  ", frame, "\n\n")
+    .l("caravan::deferred_top  ", frame, "\n\n")
     .l("Run: ", d$run_id %||% "?", "  Backend: ", d$backend %||% "?",
        "  Submitted: ", d$submitted_at %||% "?", "\n")
     stage_names <- .deferred_stage_names(d)

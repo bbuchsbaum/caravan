@@ -19,11 +19,14 @@ Manage which registry is currently active for job storage.
 }
 \examples{
 \donttest{
-# Get current registry
-use_registry()
-
-# Switch to different registry
-use_registry("~/my_project/jobs")
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  example_dir <- tempfile("caravan-registry-")
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  use_registry(example_dir)
+  use_registry()
+})
 }
 
 }

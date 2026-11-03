@@ -104,9 +104,9 @@
   names(out) <- keys
   for (nm in keys) {
     if (nm %in% names(new)) {
-      out[[nm]] <- new[[nm]]
+      out[nm] <- list(new[[nm]])
     } else {
-      out[[nm]] <- old[[nm]]
+      out[nm] <- list(old[[nm]])
     }
   }
   out
@@ -282,7 +282,7 @@
   lines
 }
 
-#' Visualize a parade execution plan
+#' Visualize a caravan execution plan
 #'
 #' Prints a compact ASCII summary of the stage DAG and execution topology.
 #'
@@ -415,6 +415,7 @@ parade_status <- function(run_id = NULL, d = NULL, view = c("summary", "layout")
   stopifnot(inherits(d, "parade_deferred"))
   status <- .parade_status_read(d$run_id)
   expected_jobs <- as.integer(status$expected_jobs %||% .deferred_total_chunks(d))
+  if (length(expected_jobs) != 1L || is.na(expected_jobs)) expected_jobs <- .deferred_total_chunks(d)
   submitted_jobs <- as.integer(status$submitted_jobs %||% 0L)
   started_jobs <- as.integer(status$started_jobs %||% 0L)
   finished_jobs <- as.integer(status$finished_jobs %||% 0L)
@@ -427,7 +428,7 @@ parade_status <- function(run_id = NULL, d = NULL, view = c("summary", "layout")
     }
     reg <- tryCatch(
       suppressMessages(suppressWarnings(
-        batchtools::loadRegistry(d$registry_dir, writeable = FALSE)
+        bt_load_registry(d$registry_dir, writeable = FALSE)
       )),
       error = function(e) NULL
     )
@@ -442,12 +443,12 @@ parade_status <- function(run_id = NULL, d = NULL, view = c("summary", "layout")
       }
       st <- tryCatch(suppressMessages(batchtools::getStatus(reg)), error = function(e) NULL)
       if (!is.null(st)) {
-        started_jobs <- as.integer((st$started %||% 0L) + (st$running %||% 0L) + (st$done %||% 0L) + (st$error %||% 0L))
+        started_jobs <- as.integer(st$started %||% 0L)
         finished_jobs <- as.integer((st$done %||% 0L) + (st$error %||% 0L))
         failed_jobs <- as.integer(st$error %||% 0L)
         execution_state <- if ((st$error %||% 0L) > 0L) {
           "failed"
-        } else if ((st$running %||% 0L) > 0L || (st$pending %||% 0L) > 0L) {
+        } else if ((st$running %||% 0L) > 0L || (st$queued %||% st$pending %||% 0L) > 0L) {
           "running"
         } else if ((st$done %||% 0L) > 0L && submitted_jobs > 0L) {
           "completed"
@@ -462,7 +463,7 @@ parade_status <- function(run_id = NULL, d = NULL, view = c("summary", "layout")
     if (!is.null(controller)) {
       resolved <- try(controller$resolved(), silent = TRUE)
       unresolved <- try(controller$unresolved(), silent = TRUE)
-      submitted_jobs <- expected_jobs
+      submitted_jobs <- length(tasks)
       started_jobs <- if (inherits(resolved, "try-error")) NA_integer_ else length(intersect(resolved, tasks))
       finished_jobs <- started_jobs
       failed_jobs <- 0L
@@ -476,12 +477,12 @@ parade_status <- function(run_id = NULL, d = NULL, view = c("summary", "layout")
       states <- vapply(fs, function(f) {
         tryCatch(future::resolved(f), error = function(e) NA)
       }, logical(1))
-      submitted_jobs <- expected_jobs
+      submitted_jobs <- length(fs)
       started_jobs <- sum(states %in% TRUE, na.rm = TRUE)
       finished_jobs <- started_jobs
       failed_jobs <- 0L
       unresolved <- sum(states %in% FALSE, na.rm = TRUE)
-      execution_state <- if (unresolved > 0L) "running" else if (submitted_jobs > 0L) "completed" else execution_state
+      execution_state <- if (anyNA(states)) "unknown" else if (unresolved > 0L) "running" else if (submitted_jobs > 0L) "completed" else execution_state
     }
   }
 
@@ -490,13 +491,18 @@ parade_status <- function(run_id = NULL, d = NULL, view = c("summary", "layout")
   } else {
     NA_integer_
   }
-  first_unsubmitted <- if (!is.na(missing_jobs) && missing_jobs > 0L) {
-    .parade_chunk_lookup(d$run_id, submitted_jobs + 1L)
+  fallback_ids <- if (!is.na(expected_jobs)) seq_len(expected_jobs) else integer()
+  pending_ids <- unlist(status$pending_chunk_ids %||% fallback_ids, use.names = FALSE)
+  next_id <- if (!is.na(missing_jobs) && missing_jobs > 0L && length(pending_ids) > submitted_jobs) {
+    as.integer(pending_ids[[submitted_jobs + 1L]])
+  } else NULL
+  first_unsubmitted <- if (!is.null(next_id)) {
+    .parade_chunk_lookup(d$run_id, next_id)
   } else {
     NULL
   }
-  if (!is.na(missing_jobs) && missing_jobs > 0L) {
-    .parade_write_incomplete_jobs(d$run_id, submitted_jobs + 1L)
+  if (!is.null(next_id)) {
+    .parade_write_incomplete_jobs(d$run_id, next_id)
   }
 
   fields <- list(

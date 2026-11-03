@@ -88,3 +88,25 @@ test_that("collect() flattens packed jobsets into element-level results", {
   expect_type(res, "list")
   expect_equal(res, list(1, 2, 3))
 })
+
+test_that("subsetting and combining packed jobsets retain packed metadata", {
+  packed <- structure(
+    list(
+      list(name = "chunk1", .__chunk_indices__ = c(1L, 2L)),
+      list(name = "chunk2", .__chunk_indices__ = c(3L, 4L))
+    ),
+    class = c("parade_jobset", "list"),
+    is_packed = TRUE,
+    n_elements = 4L,
+    chunk_size = 2L,
+    parallel_backend = "callr"
+  )
+
+  subset <- packed[1L]
+  expect_true(isTRUE(attr(subset, "is_packed")))
+  expect_equal(attr(subset, "n_elements"), 2L)
+
+  combined <- c(packed[1L], packed[2L])
+  expect_true(isTRUE(attr(combined, "is_packed")))
+  expect_equal(attr(combined, "n_elements"), 4L)
+})

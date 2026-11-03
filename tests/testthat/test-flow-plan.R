@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("io_mode=error enforces declared required inputs", {
   fl <- flow(tibble::tibble(x = 1), error = "keep") |>
@@ -50,7 +49,7 @@ test_that("flow_plan marks skip-sink artifacts as execute vs reuse with reason c
 
   for (i in seq_len(nrow(fl$grid))) {
     row <- as.list(fl$grid[i, , drop = FALSE])
-    p <- parade:::.build_path(sk, row, "s1", "y")
+    p <- caravan:::.build_path(sk, row, "s1", "y")
     dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
     saveRDS(as.double(row$x + 1), p)
   }

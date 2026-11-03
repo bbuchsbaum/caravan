@@ -129,7 +129,7 @@ test_that("slurm_map warns once for user-declared whole-node fanout", {
 })
 
 test_that("generic node requests do not trigger the whole-node warning", {
-  expect_no_warning(parade:::.slurm_map_warn_unpacked(
+  expect_no_warning(caravan:::.slurm_map_warn_unpacked(
     .x = 1:3,
     .resources = list(nodes = 1, cpus_per_task = 64),
     .engine = "slurm",
@@ -140,7 +140,7 @@ test_that("generic node requests do not trigger the whole-node warning", {
 
 test_that("ignored workers_per_node is visible before submission", {
   expect_warning(
-    parade:::.slurm_map_warn_unpacked(
+    caravan:::.slurm_map_warn_unpacked(
       .x = 1:3,
       .resources = NULL,
       .engine = "slurm",

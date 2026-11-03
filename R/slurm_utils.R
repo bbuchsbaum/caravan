@@ -26,7 +26,7 @@ resolve_slurm_job_id <- function(job) {
   # Strategy 2: Try batchtools registry (may fail due to registry issues)
   if (requireNamespace("batchtools", quietly = TRUE) && !is.null(job$registry_dir)) {
     batch_id <- tryCatch({
-      reg <- batchtools::loadRegistry(job$registry_dir, writeable = FALSE)
+      reg <- bt_load_registry(job$registry_dir, writeable = FALSE)
       jt <- batchtools::getJobTable(reg)
       row <- jt[jt$job.id == job$job_id, , drop = FALSE]
       if (nrow(row) >= 1 && !is.na(row$batch.id[[1]])) {

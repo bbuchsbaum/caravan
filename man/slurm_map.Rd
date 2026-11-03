@@ -118,7 +118,7 @@ Packed mode automatically:
 
 In standard mode, a user profile declaring \code{whole_node = TRUE} (or requesting
 at least its declared \code{cores_per_node}) triggers a warning when more than one
-job will be submitted. This is advisory: parade preserves the existing
+job will be submitted. This is advisory: caravan preserves the existing
 one-element-per-job behavior. Supplying \code{.workers_per_node} without packed
 mode also warns because that argument would otherwise have no effect.
 }

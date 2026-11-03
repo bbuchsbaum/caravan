@@ -77,8 +77,10 @@ mirai_dispatcher_status <- function() {
 #' @examples
 #' \donttest{
 #' if (requireNamespace("mirai", quietly = TRUE)) {
-#'   # Scale to 8 daemons
-#'   mirai_scale(8)
+#'   local({
+#'     on.exit(mirai_stop(), add = TRUE)
+#'     mirai_scale(1)
+#'   })
 #' }
 #' }
 mirai_scale <- function(n) {
@@ -139,9 +141,9 @@ mirai_available <- function() {
   requireNamespace("future.mirai", quietly = TRUE)
 }
 
-#' Initialize mirai for parade
+#' Initialize mirai for caravan
 #'
-#' One-step initialization of mirai for use with parade workflows.
+#' One-step initialization of mirai for use with caravan workflows.
 #' Sets up daemons and configures the future plan.
 #'
 #' @param n Number of local daemons (defaults to number of cores)
@@ -152,14 +154,12 @@ mirai_available <- function() {
 #' \donttest{
 #' if (requireNamespace("mirai", quietly = TRUE) && 
 #'     requireNamespace("future.mirai", quietly = TRUE)) {
-#'   # Initialize with default settings
-#'   mirai_init()
-#'   
-#'   # Initialize with 4 daemons
-#'   mirai_init(n = 4)
-#'   
-#'   # Clean up
-#'   mirai_stop()
+#'   local({
+#'     old_plan <- future::plan()
+#'     on.exit(future::plan(old_plan), add = TRUE)
+#'     on.exit(mirai_stop(), add = TRUE)
+#'     mirai_init(n = 2)
+#'   })
 #' }
 #' }
 mirai_init <- function(n = NULL, dispatcher = TRUE) {
@@ -168,7 +168,7 @@ mirai_init <- function(n = NULL, dispatcher = TRUE) {
          "install.packages(c('mirai', 'future.mirai'))")
   }
   
-  n <- n %||% parallel::detectCores()
+  n <- n %||% .mirai_default_workers()
   
   # Initialize daemons
   mirai::daemons(n = n, dispatcher = dispatcher)
@@ -179,6 +179,16 @@ mirai_init <- function(n = NULL, dispatcher = TRUE) {
   
   message(sprintf("Initialized mirai with %d daemons", n))
   invisible(old_plan)
+}
+
+.mirai_default_workers <- function() {
+  n <- if (requireNamespace("parallelly", quietly = TRUE)) {
+    tryCatch(parallelly::availableCores(), error = function(e) NA_integer_)
+  } else {
+    tryCatch(parallel::detectCores(), error = function(e) NA_integer_)
+  }
+  if (length(n) != 1L || is.na(n) || !is.finite(n) || n < 1) return(1L)
+  as.integer(n)
 }
 
 # Use the %||% operator from utils.R instead of redefining

@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths_validate.R
 \name{parade_doctor}
 \alias{parade_doctor}
-\title{Quick setup checks for parade}
+\title{Quick setup checks for caravan}
 \usage{
 parade_doctor(create = FALSE, quiet = FALSE)
 }

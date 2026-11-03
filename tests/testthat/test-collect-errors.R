@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 library(tibble)
 
 # ============================================================================
@@ -72,6 +71,16 @@ test_that("stop error policy does NOT emit extra message", {
 # ============================================================================
 
 test_that("chunk with errors causes stop after saving index", {
+  root <- withr::local_tempdir("caravan-collect-errors-")
+  old_paths <- getOption("parade.paths")
+  on.exit(options(parade.paths = old_paths), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(
+    scratch = root,
+    artifacts = file.path(root, "artifacts"),
+    registry = file.path(root, "registry")
+  )
+
   grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
   fl <- flow(grid, error = "propagate") |>
     stage("s", function(x) {
@@ -93,4 +102,30 @@ test_that("chunk with errors causes stop after saving index", {
   # We should be able to collect partial results
   res <- deferred_collect(d)
   expect_true(nrow(res) > 0)
+})
+
+test_that("collect rejects deferred-only distribution backends and modes", {
+  fl <- flow(tibble::tibble(x = 1L)) |>
+    stage("id", function(x) list(y = x), schema = returns(y = int()))
+
+  expect_error(
+    collect(distribute(fl, dist_slurm()), engine = "sequential"),
+    "only executes local distributions"
+  )
+  expect_error(
+    collect(distribute(fl, dist_local(within = "callr")), engine = "sequential"),
+    "does not implement within = 'callr'"
+  )
+})
+
+test_that("ungrouped future collect honors a worker request and restores the plan", {
+  old_plan <- future::plan(future::sequential)
+  on.exit(future::plan(old_plan), add = TRUE)
+  fl <- flow(tibble::tibble(x = 1:2)) |>
+    stage("pid", function(x) list(value = x), schema = returns(value = int()))
+
+  out <- collect(fl, engine = "future", workers = 1L, .progress = FALSE)
+  expect_equal(out$pid.value, 1:2)
+  expect_true(inherits(future::plan(), "FutureStrategy"))
+  expect_match(paste(class(future::plan()), collapse = " "), "sequential")
 })

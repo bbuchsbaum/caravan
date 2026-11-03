@@ -1,12 +1,12 @@
-#' Initialize parade for HPC use
+#' Initialize caravan for HPC use
 #'
-#' A one-command setup helper for running parade on HPC clusters. This function:
+#' A one-command setup helper for running caravan on HPC clusters. This function:
 #' - Initializes path aliases in `"hpc"` mode (prefer shared scratch over node-local tmp).
 #' - Optionally creates required directories and runs a quick doctor check.
 #' - Optionally scaffolds a batchtools SLURM template and persists it to `parade.json`.
 #' - Optionally sets SLURM defaults and persists them to `parade.json`.
 #'
-#' @param scratch Optional shared scratch root. If `NULL`, parade auto-detects
+#' @param scratch Optional shared scratch root. If `NULL`, caravan auto-detects
 #'   using `PARADE_SCRATCH` / `SCRATCH` / scheduler variables.
 #' @param artifacts Optional artifacts root. Default is `file.path(scratch, "parade-artifacts")`.
 #' @param registry Optional registry root. Default is `file.path(scratch, "parade-registry")`.

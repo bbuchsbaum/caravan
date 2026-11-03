@@ -7,7 +7,7 @@
 open_logs(job, ...)
 }
 \arguments{
-\item{job}{A parade job object}
+\item{job}{A caravan job object}
 
 \item{...}{Additional arguments passed to methods}
 }

@@ -1,54 +1,53 @@
 # Load the package from source
-devtools::load_all("/Users/bbuchsbaum/code/parade", quiet = TRUE)
 
 test_that(".fmt_hms formats time correctly", {
   # Normal cases with various durations
-  expect_equal(parade:::.fmt_hms(0), "0:00:00")
-  expect_equal(parade:::.fmt_hms(59), "0:00:59")
-  expect_equal(parade:::.fmt_hms(60), "0:01:00")
-  expect_equal(parade:::.fmt_hms(3599), "0:59:59")
-  expect_equal(parade:::.fmt_hms(3600), "1:00:00")
-  expect_equal(parade:::.fmt_hms(3661), "1:01:01")
-  expect_equal(parade:::.fmt_hms(86400), "24:00:00")
-  expect_equal(parade:::.fmt_hms(90061), "25:01:01")
+  expect_equal(caravan:::.fmt_hms(0), "0:00:00")
+  expect_equal(caravan:::.fmt_hms(59), "0:00:59")
+  expect_equal(caravan:::.fmt_hms(60), "0:01:00")
+  expect_equal(caravan:::.fmt_hms(3599), "0:59:59")
+  expect_equal(caravan:::.fmt_hms(3600), "1:00:00")
+  expect_equal(caravan:::.fmt_hms(3661), "1:01:01")
+  expect_equal(caravan:::.fmt_hms(86400), "24:00:00")
+  expect_equal(caravan:::.fmt_hms(90061), "25:01:01")
   
   # Edge cases with NA and NULL
-  expect_equal(parade:::.fmt_hms(NA), "NA")
-  expect_equal(parade:::.fmt_hms(NULL), "NA")
+  expect_equal(caravan:::.fmt_hms(NA), "NA")
+  expect_equal(caravan:::.fmt_hms(NULL), "NA")
   
   # Fractional seconds (should be truncated)
-  expect_equal(parade:::.fmt_hms(60.7), "0:01:00")
-  expect_equal(parade:::.fmt_hms(3661.9), "1:01:01")
+  expect_equal(caravan:::.fmt_hms(60.7), "0:01:00")
+  expect_equal(caravan:::.fmt_hms(3661.9), "1:01:01")
   
   # Negative values (should work with integer conversion)
-  expect_equal(parade:::.fmt_hms(-60), "-1:59:00")
+  expect_equal(caravan:::.fmt_hms(-60), "-1:59:00")
 })
 
 test_that(".bar generates progress bars correctly", {
   # Normal percentages
-  expect_equal(parade:::.bar(0, 10), "..........")
-  expect_equal(parade:::.bar(50, 10), "#####.....")
-  expect_equal(parade:::.bar(100, 10), "##########")
+  expect_equal(caravan:::.bar(0, 10), "..........")
+  expect_equal(caravan:::.bar(50, 10), "#####.....")
+  expect_equal(caravan:::.bar(100, 10), "##########")
   
   # Different widths
-  expect_equal(parade:::.bar(25, 4), "#...")
-  expect_equal(parade:::.bar(75, 4), "###.")
-  expect_equal(parade:::.bar(50, 20), "##########..........")
+  expect_equal(caravan:::.bar(25, 4), "#...")
+  expect_equal(caravan:::.bar(75, 4), "###.")
+  expect_equal(caravan:::.bar(50, 20), "##########..........")
   
   # Default width of 24
-  expect_equal(nchar(parade:::.bar(50)), 24)
-  expect_equal(parade:::.bar(0), "........................")
-  expect_equal(parade:::.bar(100), "########################")
+  expect_equal(nchar(caravan:::.bar(50)), 24)
+  expect_equal(caravan:::.bar(0), "........................")
+  expect_equal(caravan:::.bar(100), "########################")
   
   # Edge cases
-  expect_equal(parade:::.bar(NA, 10), "..........")
-  expect_equal(parade:::.bar(-10, 10), "..........")
-  expect_equal(parade:::.bar(150, 10), "##########")
+  expect_equal(caravan:::.bar(NA, 10), "..........")
+  expect_equal(caravan:::.bar(-10, 10), "..........")
+  expect_equal(caravan:::.bar(150, 10), "##########")
   
   # Fractional percentages
-  expect_equal(parade:::.bar(12.5, 8), "#.......")
-  expect_equal(parade:::.bar(87.5, 8), "#######.")
-  expect_equal(parade:::.bar(33.33, 6), "##....")
+  expect_equal(caravan:::.bar(12.5, 8), "#.......")
+  expect_equal(caravan:::.bar(87.5, 8), "#######.")
+  expect_equal(caravan:::.bar(33.33, 6), "##....")
 })
 
 test_that(".coerce_jobs handles various input types", {
@@ -70,13 +69,13 @@ test_that(".coerce_jobs handles various input types", {
   class(mock_job2) <- "parade_script_job"
   
   # Single job object
-  result <- parade:::.coerce_jobs(mock_job1)
+  result <- caravan:::.coerce_jobs(mock_job1)
   expect_true(is.list(result))
   expect_length(result, 1)
   expect_true(inherits(result[[1]], "parade_script_job"))
   
   # List of job objects
-  result <- parade:::.coerce_jobs(list(mock_job1, mock_job2))
+  result <- caravan:::.coerce_jobs(list(mock_job1, mock_job2))
   expect_true(is.list(result))
   expect_length(result, 2)
   expect_true(all(vapply(result, function(x) inherits(x, "parade_script_job"), logical(1))))
@@ -84,16 +83,16 @@ test_that(".coerce_jobs handles various input types", {
   # Data frame with job column
   df <- data.frame(id = 1:2)
   df$job <- list(mock_job1, mock_job2)
-  result <- parade:::.coerce_jobs(df)
+  result <- caravan:::.coerce_jobs(df)
   expect_true(is.list(result))
   expect_length(result, 2)
   
   # Character vector (would call script_load, which will error on invalid paths)
-  expect_error(parade:::.coerce_jobs(c("path1", "path2")), "No script_job.rds found")
+  expect_error(caravan:::.coerce_jobs(c("path1", "path2")), "No script_job.rds found")
   
   # Invalid input
-  expect_error(parade:::.coerce_jobs(123), "provide a list/data frame")
-  expect_error(parade:::.coerce_jobs(data.frame(x = 1:3)), "provide a list/data frame")
+  expect_error(caravan:::.coerce_jobs(123), "provide a list/data frame")
+  expect_error(caravan:::.coerce_jobs(data.frame(x = 1:3)), "provide a list/data frame")
 })
 
 test_that("script_top handles missing Slurm tools gracefully", {
@@ -109,11 +108,11 @@ test_that("script_top handles missing Slurm tools gracefully", {
   # Mock script_metrics to return an error
   local({
     mock_metrics <- function(job) stop("No Slurm tools")
-    assignInNamespace("script_metrics", mock_metrics, "parade")
+    assignInNamespace("script_metrics", mock_metrics, "caravan")
     
     # Capture output
     output <- capture.output({
-      result <- parade:::script_top(mock_job, refresh = 0.1)
+      result <- caravan:::script_top(mock_job, refresh = 0.1)
     })
     
     expect_true(any(grepl("Cannot fetch metrics", output)))
@@ -166,17 +165,17 @@ test_that("script_top formats output correctly with valid metrics", {
       counter >= 2  # Return TRUE on second call
     }
     
-    assignInNamespace("script_metrics", mock_metrics, "parade")
-    assignInNamespace("script_tail", mock_tail, "parade")
-    assignInNamespace("script_done", mock_done, "parade")
+    assignInNamespace("script_metrics", mock_metrics, "caravan")
+    assignInNamespace("script_tail", mock_tail, "caravan")
+    assignInNamespace("script_done", mock_done, "caravan")
     
     # Test with clear = FALSE to avoid terminal control codes
     output <- capture.output({
-      result <- suppressWarnings(parade:::script_top(mock_job, refresh = 0.1, nlog = 5, clear = FALSE))
+      result <- suppressWarnings(caravan:::script_top(mock_job, refresh = 0.1, nlog = 5, clear = FALSE))
     })
     
     # Check output contains expected elements
-    expect_true(any(grepl("parade::script_top", output)))
+    expect_true(any(grepl("caravan::script_top", output)))
     expect_true(any(grepl("Job: test_job", output)))
     expect_true(any(grepl("12345", output)))
     expect_true(any(grepl("RUNNING", output)))
@@ -250,16 +249,16 @@ test_that("jobs_top handles multiple jobs correctly", {
       counter >= 4  # Both jobs checked twice
     }
     
-    assignInNamespace("script_metrics", mock_metrics, "parade")
-    assignInNamespace("script_tail", mock_tail, "parade")
-    assignInNamespace("script_done", mock_done, "parade")
+    assignInNamespace("script_metrics", mock_metrics, "caravan")
+    assignInNamespace("script_tail", mock_tail, "caravan")
+    assignInNamespace("script_done", mock_done, "caravan")
     
     output <- capture.output({
-      result <- suppressWarnings(parade:::jobs_top(jobs, refresh = 0.1, nlog = 5, clear = FALSE))
+      result <- suppressWarnings(caravan:::jobs_top(jobs, refresh = 0.1, nlog = 5, clear = FALSE))
     })
     
     # Check output structure
-    expect_true(any(grepl("parade::jobs_top", output)))
+    expect_true(any(grepl("caravan::jobs_top", output)))
     expect_true(any(grepl("States:", output)))
     expect_true(any(grepl("RUNNING=1", output)))
     expect_true(any(grepl("PENDING=1", output)))
@@ -296,12 +295,12 @@ test_that("jobs_top handles failed metrics gracefully", {
       TRUE  # Immediately done
     }
     
-    assignInNamespace("script_metrics", mock_metrics, "parade")
-    assignInNamespace("script_done", mock_done, "parade")
+    assignInNamespace("script_metrics", mock_metrics, "caravan")
+    assignInNamespace("script_done", mock_done, "caravan")
     
     output <- capture.output({
       expect_message(
-        result <- parade:::jobs_top(list(mock_job), refresh = 0.1, clear = FALSE),
+        result <- caravan:::jobs_top(list(mock_job), refresh = 0.1, clear = FALSE),
         "Failed to fetch metrics"
       )
     })
@@ -312,31 +311,31 @@ test_that("jobs_top handles failed metrics gracefully", {
 
 test_that(".parade_fmt_bytes formats bytes correctly", {
   # Small values
-  expect_equal(parade:::.parade_fmt_bytes(0), "0B")
-  expect_equal(parade:::.parade_fmt_bytes(512), "512B")
-  expect_equal(parade:::.parade_fmt_bytes(1023), "1023B")
+  expect_equal(caravan:::.parade_fmt_bytes(0), "0B")
+  expect_equal(caravan:::.parade_fmt_bytes(512), "512B")
+  expect_equal(caravan:::.parade_fmt_bytes(1023), "1023B")
   
   # Kilobytes
-  expect_equal(parade:::.parade_fmt_bytes(1024), "1.0K")
-  expect_equal(parade:::.parade_fmt_bytes(1536), "1.5K")
-  expect_equal(parade:::.parade_fmt_bytes(1024 * 10), "10.0K")
+  expect_equal(caravan:::.parade_fmt_bytes(1024), "1.0K")
+  expect_equal(caravan:::.parade_fmt_bytes(1536), "1.5K")
+  expect_equal(caravan:::.parade_fmt_bytes(1024 * 10), "10.0K")
   
   # Megabytes
-  expect_equal(parade:::.parade_fmt_bytes(1024^2), "1.0M")
-  expect_equal(parade:::.parade_fmt_bytes(1024^2 * 5.5), "5.5M")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^2), "1.0M")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^2 * 5.5), "5.5M")
   
   # Gigabytes
-  expect_equal(parade:::.parade_fmt_bytes(1024^3), "1.0G")
-  expect_equal(parade:::.parade_fmt_bytes(1024^3 * 2.7), "2.7G")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^3), "1.0G")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^3 * 2.7), "2.7G")
   
   # Terabytes
-  expect_equal(parade:::.parade_fmt_bytes(1024^4), "1.0T")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^4), "1.0T")
   
   # Petabytes
-  expect_equal(parade:::.parade_fmt_bytes(1024^5), "1.0P")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^5), "1.0P")
   
   # NA values
-  expect_equal(parade:::.parade_fmt_bytes(NA), "NA")
+  expect_equal(caravan:::.parade_fmt_bytes(NA), "NA")
 })
 
 test_that("script_top handles NA values in metrics", {
@@ -371,12 +370,12 @@ test_that("script_top handles NA values in metrics", {
     mock_tail <- function(job, n) invisible()
     mock_done <- function(job) TRUE
     
-    assignInNamespace("script_metrics", mock_metrics, "parade")
-    assignInNamespace("script_tail", mock_tail, "parade")
-    assignInNamespace("script_done", mock_done, "parade")
+    assignInNamespace("script_metrics", mock_metrics, "caravan")
+    assignInNamespace("script_tail", mock_tail, "caravan")
+    assignInNamespace("script_done", mock_done, "caravan")
     
     output <- capture.output({
-      result <- parade:::script_top(mock_job, refresh = 0.1, clear = FALSE)
+      result <- caravan:::script_top(mock_job, refresh = 0.1, clear = FALSE)
     })
     
     # Should handle NA values gracefully
@@ -440,12 +439,12 @@ test_that("jobs_top with log tail from RUNNING job", {
     
     mock_done <- function(job) TRUE
     
-    assignInNamespace("script_metrics", mock_metrics, "parade")
-    assignInNamespace("script_tail", mock_tail, "parade")
-    assignInNamespace("script_done", mock_done, "parade")
+    assignInNamespace("script_metrics", mock_metrics, "caravan")
+    assignInNamespace("script_tail", mock_tail, "caravan")
+    assignInNamespace("script_done", mock_done, "caravan")
     
     output <- capture.output({
-      result <- parade:::jobs_top(list(mock_job1, mock_job2), refresh = 0.1, clear = FALSE)
+      result <- caravan:::jobs_top(list(mock_job1, mock_job2), refresh = 0.1, clear = FALSE)
     })
     
     # Check that log tail is shown for RUNNING job
@@ -458,8 +457,8 @@ test_that("jobs_top with log tail from RUNNING job", {
 # deferred_top tests -------------------------------------------------------
 
 test_that("deferred_top errors on non-deferred input", {
-  expect_error(parade:::deferred_top(list()), "parade_deferred")
-  expect_error(parade:::deferred_top(42), "parade_deferred")
+  expect_error(caravan:::deferred_top(list()), "parade_deferred")
+  expect_error(caravan:::deferred_top(42), "parade_deferred")
 })
 
 test_that(".count_index_files counts index files correctly", {
@@ -468,7 +467,7 @@ test_that(".count_index_files counts index files correctly", {
   on.exit(unlink(tmp, recursive = TRUE))
 
   # No files yet
-  expect_equal(parade:::.count_index_files(tmp), 0L)
+  expect_equal(caravan:::.count_index_files(tmp), 0L)
 
   # Create some index files and a non-index file
 
@@ -477,17 +476,17 @@ test_that(".count_index_files counts index files correctly", {
   saveRDS(NULL, file.path(tmp, "index-0003.rds"))
   saveRDS(NULL, file.path(tmp, "other-file.rds"))
 
-  expect_equal(parade:::.count_index_files(tmp), 3L)
+  expect_equal(caravan:::.count_index_files(tmp), 3L)
 })
 
 test_that(".count_index_files returns 0 for non-existent dir", {
-  expect_equal(parade:::.count_index_files("/nonexistent/path/abc123"), 0L)
+  expect_equal(caravan:::.count_index_files("/nonexistent/path/abc123"), 0L)
 })
 
 test_that(".deferred_total_chunks uses jobs field when available", {
   d <- list(jobs = list("a", "b", "c"), chunks_path = NULL)
   class(d) <- "parade_deferred"
-  expect_equal(parade:::.deferred_total_chunks(d), 3L)
+  expect_equal(caravan:::.deferred_total_chunks(d), 3L)
 })
 
 test_that(".deferred_total_chunks falls back to chunks_path", {
@@ -498,13 +497,13 @@ test_that(".deferred_total_chunks falls back to chunks_path", {
 
   d <- list(jobs = NULL, chunks_path = tmp)
   class(d) <- "parade_deferred"
-  expect_equal(parade:::.deferred_total_chunks(d), 4L)
+  expect_equal(caravan:::.deferred_total_chunks(d), 4L)
 })
 
 test_that(".deferred_total_chunks returns NA when nothing available", {
   d <- list(jobs = NULL, chunks_path = "/nonexistent/chunks.rds")
   class(d) <- "parade_deferred"
-  expect_true(is.na(parade:::.deferred_total_chunks(d)))
+  expect_true(is.na(caravan:::.deferred_total_chunks(d)))
 })
 
 test_that("deferred_top once mode shows header and progress for local backend", {
@@ -534,14 +533,14 @@ test_that("deferred_top once mode shows header and progress for local backend", 
     mock_status <- function(d, detail = FALSE) {
       tibble::tibble(total = 2L, resolved = 2L, unresolved = 0L)
     }
-    assignInNamespace("deferred_status", mock_status, "parade")
+    assignInNamespace("deferred_status", mock_status, "caravan")
 
     output <- capture.output({
-      result <- parade:::deferred_top(d, once = TRUE, clear = FALSE)
+      result <- caravan:::deferred_top(d, once = TRUE, clear = FALSE)
     })
 
     # Verify header elements
-    expect_true(any(grepl("parade::deferred_top", output)))
+    expect_true(any(grepl("caravan::deferred_top", output)))
     expect_true(any(grepl("test1234", output)))
     expect_true(any(grepl("local", output)))
     expect_true(any(grepl("index", output)))
@@ -566,14 +565,14 @@ test_that(".deferred_log_tail reads log files", {
 
   d <- list(registry_dir = tmp_reg)
 
-  lines <- parade:::.deferred_log_tail(d, chunk_id = 1, batch_id = "12345", nlog = 10)
+  lines <- caravan:::.deferred_log_tail(d, chunk_id = 1, batch_id = "12345", nlog = 10)
   expect_length(lines, 10)
   expect_equal(lines[10], "line 30")
 })
 
 test_that(".deferred_log_tail returns NULL for missing log", {
   d <- list(registry_dir = "/nonexistent/reg")
-  lines <- parade:::.deferred_log_tail(d, chunk_id = 99, batch_id = "12345", nlog = 10)
+  lines <- caravan:::.deferred_log_tail(d, chunk_id = 99, batch_id = "12345", nlog = 10)
   expect_null(lines)
 })
 
@@ -587,14 +586,14 @@ test_that(".deferred_sort_metrics sorts by priority: FAILED first, then RUNNING,
     list(chunk = 4, state = "PENDING",   cpu_pct = NA_real_, max_rss = NA_real_, elapsed = NA_real_, node = "?"),
     list(chunk = 5, state = "CANCELLED", cpu_pct = NA_real_, max_rss = NA_real_, elapsed = 2, node = "n4")
   )
-  sorted <- parade:::.deferred_sort_metrics(metrics)
+  sorted <- caravan:::.deferred_sort_metrics(metrics)
   states <- vapply(sorted, function(m) m$state, character(1))
   # FAILED and CANCELLED first (priority 1), then RUNNING (2), PENDING (3), COMPLETED (4)
   expect_equal(states, c("FAILED", "CANCELLED", "RUNNING", "PENDING", "COMPLETED"))
 })
 
 test_that(".deferred_sort_metrics returns empty list for empty input", {
-  expect_length(parade:::.deferred_sort_metrics(list()), 0)
+  expect_length(caravan:::.deferred_sort_metrics(list()), 0)
 })
 
 test_that(".deferred_sort_metrics preserves chunk order within same priority", {
@@ -603,7 +602,7 @@ test_that(".deferred_sort_metrics preserves chunk order within same priority", {
     list(chunk = 3,  state = "RUNNING", cpu_pct = NA_real_, max_rss = NA_real_, elapsed = 2, node = "n2"),
     list(chunk = 7,  state = "RUNNING", cpu_pct = NA_real_, max_rss = NA_real_, elapsed = 3, node = "n3")
   )
-  sorted <- parade:::.deferred_sort_metrics(metrics)
+  sorted <- caravan:::.deferred_sort_metrics(metrics)
   chunks <- vapply(sorted, function(m) m$chunk, numeric(1))
   expect_equal(chunks, c(3, 7, 10))
 })
@@ -645,11 +644,11 @@ test_that("deferred_top truncates chunk table with max_rows", {
   })
 
   local({
-    assignInNamespace(".deferred_slurm_metrics", function(d) fake_metrics, "parade")
-    assignInNamespace(".deferred_chunk_labels", function(d) NULL, "parade")
+    assignInNamespace(".deferred_slurm_metrics", function(d) fake_metrics, "caravan")
+    assignInNamespace(".deferred_chunk_labels", function(d) NULL, "caravan")
 
     output <- capture.output({
-      result <- parade:::deferred_top(d, once = TRUE, clear = FALSE, max_rows = 5L)
+      result <- caravan:::deferred_top(d, once = TRUE, clear = FALSE, max_rows = 5L)
     })
 
     # Should show "... and N more" line
@@ -684,9 +683,9 @@ test_that(".read_index_errors finds errors in index files", {
   saveRDS(res2, file.path(tmp_idx, "index-0002.rds"))
 
   # Clear the cache to avoid stale data
-  rm(list = ls(envir = parade:::.deferred_index_error_cache), envir = parade:::.deferred_index_error_cache)
+  rm(list = ls(envir = caravan:::.deferred_index_error_cache), envir = caravan:::.deferred_index_error_cache)
 
-  result <- parade:::.read_index_errors(tmp_idx, max_errors = 10L)
+  result <- caravan:::.read_index_errors(tmp_idx, max_errors = 10L)
   expect_equal(result$n_errors, 2L)
   expect_equal(result$n_chunks, 1L)  # only chunk 1 had errors
   expect_length(result$errors, 2L)
@@ -705,16 +704,16 @@ test_that(".read_index_errors truncates when exceeding max_errors", {
   res$.diag <- lapply(1:5, function(i) list(list(ok = FALSE, stage = "s1", error = paste("error", i))))
   saveRDS(res, file.path(tmp_idx, "index-0001.rds"))
 
-  rm(list = ls(envir = parade:::.deferred_index_error_cache), envir = parade:::.deferred_index_error_cache)
+  rm(list = ls(envir = caravan:::.deferred_index_error_cache), envir = caravan:::.deferred_index_error_cache)
 
-  result <- parade:::.read_index_errors(tmp_idx, max_errors = 2L)
+  result <- caravan:::.read_index_errors(tmp_idx, max_errors = 2L)
   expect_equal(result$n_errors, 5L)
   expect_length(result$errors, 2L)
   expect_equal(result$truncated, 3L)
 })
 
 test_that(".read_index_errors returns zeros for empty/missing dir", {
-  result <- parade:::.read_index_errors("/nonexistent/path/xyz123")
+  result <- caravan:::.read_index_errors("/nonexistent/path/xyz123")
   expect_equal(result$n_errors, 0L)
   expect_equal(result$n_chunks, 0L)
   expect_length(result$errors, 0L)
@@ -730,19 +729,19 @@ test_that(".read_index_errors caches results per file", {
   f <- file.path(tmp_idx, "index-0001.rds")
   saveRDS(res, f)
 
-  rm(list = ls(envir = parade:::.deferred_index_error_cache), envir = parade:::.deferred_index_error_cache)
+  rm(list = ls(envir = caravan:::.deferred_index_error_cache), envir = caravan:::.deferred_index_error_cache)
 
   # First call reads the file
-  r1 <- parade:::.read_index_errors(tmp_idx)
+  r1 <- caravan:::.read_index_errors(tmp_idx)
   expect_equal(r1$n_errors, 1L)
 
   # Verify cache entry exists
   cache_key <- normalizePath(f, mustWork = FALSE)
-  expect_true(exists(cache_key, envir = parade:::.deferred_index_error_cache))
+  expect_true(exists(cache_key, envir = caravan:::.deferred_index_error_cache))
 
   # Second call uses cache (even if file is deleted)
   unlink(f)
-  r2 <- parade:::.read_index_errors(tmp_idx)
+  r2 <- caravan:::.read_index_errors(tmp_idx)
   # File is gone so list.files won't find it — result should be 0
 
   # Actually the cache is keyed by file path, but list.files won't return

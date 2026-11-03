@@ -2,7 +2,7 @@
 % Please edit documentation in R/flow.R
 \name{flow}
 \alias{flow}
-\title{Create a parade flow for declarative data processing}
+\title{Create a caravan flow for declarative data processing}
 \usage{
 flow(
   grid,

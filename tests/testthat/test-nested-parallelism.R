@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 library(tibble)
 
 # ============================================================================
@@ -73,7 +72,10 @@ test_that("nested parallelism: callr outer + script_stage with internal multicor
       workers_within = 2L
     ))
 
-  res <- collect(fl)
+  expect_error(collect(fl), "does not implement within = 'callr'")
+  deferred <- submit(fl)
+  deferred_await(deferred, timeout = 60)
+  res <- deferred_collect(deferred)
 
   # --- Structure checks ---
   expect_equal(nrow(res), 4L)

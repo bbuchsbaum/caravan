@@ -41,7 +41,7 @@ fully independent R process via \code{\link[callr:r_bg]{callr::r_bg()}}. Up to
 next group is launched (work-queue pattern). This is ideal for
 packing a node with processes that each use their own internal
 parallelism (e.g., the script calls \code{furrr}, \code{mclapply}, or uses
-threaded BLAS/OpenMP). Parade does not manage the internal
+threaded BLAS/OpenMP). Caravan does not manage the internal
 parallelism — the script/function is free to use as many cores as
 it needs.
 }}
@@ -61,7 +61,7 @@ overhead when you have many small groups.
 }}
 
 \item{target_jobs}{Integer; the total number of futures to create.
-Overrides \code{chunks_per_job} — parade divides groups evenly across this
+Overrides \code{chunks_per_job} — caravan divides groups evenly across this
 many futures. Useful when you want a fixed number of parallel units
 regardless of how many groups exist.
 \itemize{
@@ -75,6 +75,10 @@ it is killed and its result (if any) is recovered. Useful as a safety
 net when stage functions may leave background processes that prevent
 clean exit.
 \code{NULL} (default) means no timeout.}
+
+\item{parallel_opts}{Named list of GNU Parallel options used only when
+\code{within = "parallel"}. Supported entries are \code{parallel_bin}, \code{resume},
+\code{joblog}, \code{tagstring}, \code{memfree}, and \code{extra_args}.}
 }
 \value{
 A \code{parade_dist} object for local execution

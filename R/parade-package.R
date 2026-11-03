@@ -3,7 +3,7 @@
 
 #' Declarative parallel dataflow with Future/Furrr and SLURM utilities
 #'
-#' The parade package provides a declarative, lazy, and compositional approach
+#' The caravan package provides a declarative, lazy, and compositional approach
 #' to parallel dataflow in R. Built on top of the future/furrr ecosystem, it
 #' offers typed schemas, artifact management, diagnostics, and HPC-friendly
 #' distribution including seamless SLURM integration via future.batchtools.

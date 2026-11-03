@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("sidecars include hardened metadata fields and catalog indexes them", {
   tmpdir <- withr::local_tempdir()

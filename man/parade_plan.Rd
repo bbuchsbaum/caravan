@@ -2,7 +2,7 @@
 % Please edit documentation in R/run_status.R
 \name{parade_plan}
 \alias{parade_plan}
-\title{Visualize a parade execution plan}
+\title{Visualize a caravan execution plan}
 \usage{
 parade_plan(x, print = TRUE)
 }

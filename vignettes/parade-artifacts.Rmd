@@ -68,7 +68,7 @@ saveRDS(huge_results, "~/my_home_dir/results.rds")  # NO! Home has quota!
 **Artifacts** automatically save large outputs to disk during processing, returning just file references:
 
 ```r
-library(parade)
+library(caravan)
 
 # Local dev:
 paths_init()
@@ -109,10 +109,10 @@ model_50 <- readRDS(results$model[[50]]$path)
 
 Reproducibility tip: When examples use random data (`rnorm()`, sampling, etc.), set a seed (e.g., `set.seed(42)`) so printed outputs are deterministic.
 
-### Step 1: Initialize parade's path system
+### Step 1: Initialize caravan's path system
 
 ```r
-library(parade)
+library(caravan)
 paths_init()  # Sets up smart paths for your environment
 ```
 
@@ -198,7 +198,7 @@ paths_set(artifacts = "/fast/storage/my_outputs")
 
 ### Discoverability: catalog and search
 
-Artifacts are just files, but Parade can help you **discover** them by scanning
+Artifacts are just files, but Caravan can help you **discover** them by scanning
 the sink sidecars (`*.json`) for provenance metadata.
 
 ```r
@@ -248,7 +248,7 @@ neuro_pipeline <- flow(subjects) |>
       # raw <- oro.nifti::readNIfTI(sprintf("data/%s_T1.nii.gz", subject))
       
       # For this example, simulate with a large matrix
-      set.seed(as.numeric(factor(subject)))
+      set.seed(sum(utf8ToInt(subject)))
       raw <- matrix(rnorm(256 * 256 * 176), nrow = 256)  # ~46MB
       
       # Simulate preprocessing
@@ -349,94 +349,34 @@ sink_spec(
 # brain <- RNifti::readNifti(cleaned_brain$path)
 ```
 
-### Scenario 2: Machine Learning with Checkpointing
+### Scenario 2: Independent model training
 
-Save models at each epoch for resume capability:
+Train one model per fold, processing epochs in order within each stage call.
+The sink saves the final model. It does not resume an interrupted stage; that
+requires an explicit checkpoint and a way to validate its inputs and state.
 
 ```r
-ml_training <- flow(param_grid(
-  epoch = 1:100,
-  fold = 1:5
-)) |>
+ml_training <- flow(param_grid(fold = 1:5)) |>
   stage("train",
-    f = function(epoch, fold) {
-      # Check if already completed
-      checkpoint_path <- sprintf("artifacts://ml/checkpoints/fold%d_epoch%03d.rds", 
-                                fold, epoch)
-      
-      if (file.exists(resolve_path(checkpoint_path))) {
-        # Resume from checkpoint
-        model <- readRDS(resolve_path(checkpoint_path))
-        message("Resumed from checkpoint")
-      } else {
-        # Train from scratch or previous epoch
-        if (epoch > 1) {
-          prev_path <- sprintf("artifacts://ml/checkpoints/fold%d_epoch%03d.rds",
-                              fold, epoch - 1)
-          model <- readRDS(resolve_path(prev_path))
-        } else {
-          # Initialize a new model (simple linear model for demo)
-          model <- list(
-            weights = rnorm(10),
-            bias = 0,
-            learning_rate = 0.01
-          )
-        }
-        
-        # Simulate one epoch of training
-        set.seed(fold * 1000 + epoch)
-        
-        # Get mock training data for this fold
-        n_samples <- 100
-        X <- matrix(rnorm(n_samples * 10), ncol = 10)
-        y <- X %*% rnorm(10) + rnorm(n_samples)
-        
-        # Simple gradient descent update (mock training)
-        predictions <- X %*% model$weights + model$bias
-        errors <- predictions - y
-        gradient_w <- t(X) %*% errors / n_samples
-        gradient_b <- mean(errors)
-        
-        # Update model
-        model$weights <- model$weights - model$learning_rate * gradient_w
-        model$bias <- model$bias - model$learning_rate * gradient_b
+    f = function(fold) {
+      set.seed(fold)
+      model <- list(weights = rnorm(10), bias = 0, learning_rate = 0.01)
+      for (epoch in 1:5) {
+        X <- matrix(rnorm(100 * 10), ncol = 10)
+        y <- drop(X %*% rep(1, 10)) + rnorm(100)
+        errors <- drop(X %*% model$weights) + model$bias - y
+        model$weights <- model$weights - model$learning_rate * drop(crossprod(X, errors)) / 100
+        model$bias <- model$bias - model$learning_rate * mean(errors)
       }
-      
-      # Calculate loss on validation data
-      val_X <- matrix(rnorm(50 * 10), ncol = 10)
-      val_y <- val_X %*% rnorm(10) + rnorm(50)
-      val_pred <- val_X %*% model$weights + model$bias
-      loss <- mean((val_pred - val_y)^2)  # MSE loss
-      
-      list(
-        model = model,
-        fold = fold,
-        epoch = epoch,
-        loss = loss
-      )
+      list(model = model, loss = mean(errors^2))
     },
-    schema = returns(
-      model = artifact(),
-      fold = int(),
-      epoch = int(),
-      loss = dbl()
-    ),
-    sink = sink_spec(
-      fields = "model",
-      dir = "artifacts://ml/checkpoints",
-      template = "fold{fold}_epoch{epoch:03d}",
-      overwrite = "skip"  # Don't recompute existing
-    )
+    schema = returns(model = artifact(), loss = dbl()),
+    sink = sink_spec(fields = "model", dir = "artifacts://ml/models",
+                     template = "fold{fold}", overwrite = "overwrite")
   )
 
-# Can interrupt and resume training!
-results <- collect(ml_training)
-
-# Plot training curves without loading models
-library(ggplot2)
-ggplot(results, aes(x = epoch, y = loss, color = factor(fold))) +
-  geom_line() +
-  labs(title = "Training Progress")
+results <- collect(ml_training, engine = "sequential")
+results[, c("fold", "train.loss", ".ok")]
 ```
 
 ### Scenario 3: Collaborative Analysis with Selective Sharing
@@ -455,7 +395,7 @@ preprocessing <- flow(all_subjects[1:50, ]) |>
   stage("clean",
     f = function(subject_id, group) {
       # Simulate data cleaning
-      set.seed(as.numeric(factor(subject_id)))
+      set.seed(as.integer(sub("^sub_", "", subject_id)))
       raw_data <- data.frame(
         value = rnorm(1000, mean = ifelse(group == "control", 100, 110)),
         time = 1:1000
@@ -554,33 +494,12 @@ summary_sink <- sink_spec(
 )
 ```
 
-### Pattern 2: Conditional Artifacts
+### Pattern 2: Choosing which artifacts to save
 
-Save artifacts only when they meet criteria:
-
-```r
-stage("process",
-  f = function(data) {
-    model <- fit_model(data)
-    size <- object.size(model)
-    
-    if (size > 10*1024*1024) {  # > 10MB
-      list(model = model, stored = TRUE)
-    } else {
-      list(model = model, stored = FALSE)
-    }
-  },
-  schema = returns(
-    model = maybe(artifact()),  # Conditional artifact
-    stored = lgl()
-  ),
-  sink = sink_spec(
-    fields = "model",
-    dir = "artifacts://conditional",
-    when = ~ stored  # Only sink when stored = TRUE
-  )
-)
-```
+A sink writes its configured fields for each successful stage execution. To save
+only selected models, partition the input grid before running the flow, or use a
+separate stage for the rows that need persistence. `sink_spec()` does not accept
+a `when` argument.
 
 ### Pattern 3: Artifact Versioning
 

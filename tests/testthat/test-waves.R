@@ -9,8 +9,8 @@ test_that("apply_waves submits jobs in order (no wait)", {
     structure(list(id = spec), class = "waves_test_job")
   }
 
-  wave_policy <- parade::in_waves_of(2, wait = FALSE, delay = 0)
-  out <- parade:::apply_waves(jobs, submit_fn, wave_policy, progress = FALSE)
+  wave_policy <- caravan::in_waves_of(2, wait = FALSE, delay = 0)
+  out <- caravan:::apply_waves(jobs, submit_fn, wave_policy, progress = FALSE)
 
   expect_length(out, 5)
   expect_equal(submitted, 1:5)
@@ -55,11 +55,11 @@ test_that("apply_concurrency_limit never exceeds max_in_flight", {
     "job_status",
     "waves_test_job",
     job_status.waves_test_job,
-    envir = asNamespace("parade")
+    envir = asNamespace("caravan")
   )
 
-  policy <- parade::max_in_flight(2, poll = 0)
-  out <- parade:::apply_concurrency_limit(jobs, submit_fn, policy, progress = FALSE)
+  policy <- caravan::max_in_flight(2, poll = 0)
+  out <- caravan:::apply_concurrency_limit(jobs, submit_fn, policy, progress = FALSE)
 
   expect_equal(state$max_seen, 2L)
   expect_length(out, 7)

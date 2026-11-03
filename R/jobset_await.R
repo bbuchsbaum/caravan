@@ -2,7 +2,7 @@
 
 #' Wait for jobs to complete
 #'
-#' @param x A `parade_jobset` or parade job object
+#' @param x A `parade_jobset` or caravan job object
 #' @param ... Additional arguments passed to method implementations
 #' @return The jobset/job (invisibly)
 #' @examples

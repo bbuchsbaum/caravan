@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)  # Load parade package from source
 library(tibble)
 library(future)
 library(purrr)
@@ -199,10 +198,10 @@ test_that("basic type functions work", {
 test_that("lst() creates list_of type", {
   skip_if_not_installed("vctrs")
   
-  lst_type <- parade::lst()
+  lst_type <- caravan::lst()
   expect_s3_class(lst_type, "vctrs_list_of")
   
-  lst_int <- parade::lst(ptype = integer())
+  lst_int <- caravan::lst(ptype = integer())
   expect_s3_class(lst_int, "vctrs_list_of")
 })
 

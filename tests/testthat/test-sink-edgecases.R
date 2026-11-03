@@ -2,7 +2,7 @@ testthat::skip_if_not_installed("mockery")
 library(mockery)
 
 test_that("sink writes sidecar with checksum and bytes", {
-  parade::paths_init(quiet = TRUE)
+  caravan::paths_init(quiet = TRUE)
   tmpdir <- file.path(tempdir(), paste0("parade-sidecar-", as.integer(runif(1,1,1e6))))
   grid <- tibble::tibble(x = 1)
   val <- c(1, 2, 3)
@@ -11,7 +11,7 @@ test_that("sink writes sidecar with checksum and bytes", {
     stage(
       id = "s",
       f = function(x) list(obj = val),
-      schema = returns(obj = lst()),
+      schema = returns(obj = caravan::lst()),
       sink = sink_spec(fields = "obj", dir = tmpdir, sidecar = "json", checksum = TRUE)
     )
 
@@ -31,7 +31,7 @@ test_that("sink writes sidecar with checksum and bytes", {
 })
 
 test_that("sink skip mode still returns file references", {
-  parade::paths_init(quiet = TRUE)
+  caravan::paths_init(quiet = TRUE)
   tmpdir <- tempfile("parade-skip-")
   grid <- tibble::tibble(x = 1)
   val <- c(1, 2, 3)
@@ -40,7 +40,7 @@ test_that("sink skip mode still returns file references", {
     stage(
       id = "s",
       f = function(x) list(obj = val),
-      schema = returns(obj = lst()),
+      schema = returns(obj = caravan::lst()),
       sink = sink_spec(fields = "obj", dir = tmpdir, sidecar = "json", checksum = TRUE, overwrite = "skip")
     )
 
@@ -59,7 +59,7 @@ test_that("sink skip mode still returns file references", {
 })
 
 test_that(".write_atomic_rds errors when rename fails (unless fallback enabled)", {
-  writer <- parade:::.write_atomic_rds
+  writer <- caravan:::.write_atomic_rds
   # Force file.rename to fail
   stub(writer, "file.rename", function(...) FALSE)
   p <- tempfile(fileext = ".rds")
@@ -78,17 +78,17 @@ test_that("sink templates cannot escape base dir", {
 
   spec <- sink_spec(fields = "x", dir = base_dir, template = "../oops/{.row_key}", overwrite = "overwrite")
   row <- tibble::tibble(x = 1)
-  expect_error(parade:::.build_path(spec, row, "stage", "x"), "outside base dir")
+  expect_error(caravan:::.build_path(spec, row, "stage", "x"), "outside base dir")
 
   spec2 <- sink_spec(fields = "x", dir = base_dir, template = "/tmp/oops/{.row_key}", overwrite = "overwrite")
-  expect_error(parade:::.build_path(spec2, row, "stage", "x"), "absolute path")
+  expect_error(caravan:::.build_path(spec2, row, "stage", "x"), "absolute path")
 
   quick <- sink_quick("x", dir = base_dir, template = "../oops/{.row_key}", write = "rds", overwrite = "overwrite")
-  expect_error(parade:::.build_path(quick, row, "stage", "x"), "outside base dir")
+  expect_error(caravan:::.build_path(quick, row, "stage", "x"), "outside base dir")
 })
 
 test_that("per-field formats are honored", {
-  parade::paths_init(quiet = TRUE)
+  caravan::paths_init(quiet = TRUE)
   tmpdir <- file.path(tempdir(), paste0("parade-formats-", as.integer(runif(1,1,1e6))))
   grid <- tibble::tibble(x = 1)
 
@@ -109,7 +109,8 @@ test_that("per-field formats are honored", {
 })
 
 test_that("autoloaded sink values are materialized for downstream stages", {
-  parade::paths_init(quiet = TRUE)
+  caravan::paths_init(quiet = TRUE)
+  sink_dir <- file.path(withr::local_tempdir("caravan-sink-quick-"), "quick")
   grid <- tibble::tibble(x = 1:3)
 
   fl <- flow(grid) |>
@@ -117,7 +118,7 @@ test_that("autoloaded sink values are materialized for downstream stages", {
       id = "write",
       f = function(x) list(v = x),
       schema = returns(v = dbl()),
-      sink = sink_quick("v", write = "rds", autoload = TRUE)
+      sink = sink_quick("v", write = "rds", dir = sink_dir, autoload = TRUE)
     ) |>
     stage(
       id = "use",

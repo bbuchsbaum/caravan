@@ -14,7 +14,7 @@ slurm_defaults_set(..., .list = NULL, profile = "default", persist = FALSE)
 \item{profile}{Profile name; defaults to \code{"default"}. Site-specific profiles
 belong in user or project configuration rather than package code.}
 
-\item{persist}{Write to the parade config file if \code{TRUE}; otherwise update
+\item{persist}{Write to the caravan config file if \code{TRUE}; otherwise update
 only the current R session.}
 }
 \value{

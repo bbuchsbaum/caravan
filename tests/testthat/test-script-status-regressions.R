@@ -18,7 +18,7 @@ test_that("script_status falls back from a NULL job table to getStatus", {
   skip_if_not_installed("batchtools")
   job <- script_status_test_job()
 
-  stub(script_status, "batchtools::loadRegistry", list(writeable = FALSE))
+  stub(script_status, "bt_load_registry", list(writeable = FALSE))
   stub(script_status, "batchtools::getJobTable", NULL)
   stub(script_status, "batchtools::getStatus", list(
     pending = 0L,
@@ -37,7 +37,7 @@ test_that("script_status uses sacct after batchtools and squeue are unavailable"
   skip_if_not_installed("batchtools")
   job <- script_status_test_job()
 
-  stub(script_status, "batchtools::loadRegistry", list(writeable = FALSE))
+  stub(script_status, "bt_load_registry", list(writeable = FALSE))
   stub(script_status, "batchtools::getJobTable", NULL)
   stub(script_status, "batchtools::getStatus", NULL)
   stub(script_status, "resolve_slurm_job_id", "123")
@@ -50,11 +50,11 @@ test_that("script_status uses sacct after batchtools and squeue are unavailable"
 })
 
 test_that("script_status maps terminal SLURM failures to error", {
-  result <- parade:::.script_status_from_slurm_state("OUT_OF_MEMORY")
+  result <- caravan:::.script_status_from_slurm_state("OUT_OF_MEMORY")
   expect_equal(result$error, 1L)
   expect_equal(result$running, 0L)
 
-  cancelled <- parade:::.script_status_from_slurm_state("CANCELLED by 1234")
+  cancelled <- caravan:::.script_status_from_slurm_state("CANCELLED by 1234")
   expect_equal(cancelled$error, 1L)
 })
 
@@ -67,7 +67,7 @@ test_that("script_status handles batchtools time-prefixed columns", {
     error = NA_character_
   )
 
-  result <- parade:::.script_status_from_job_table(jt)
+  result <- caravan:::.script_status_from_job_table(jt)
   expect_equal(result$started, 1L)
   expect_equal(result$done, 1L)
   expect_equal(result$error, 0L)
@@ -83,7 +83,7 @@ test_that("status dispatches for a single parade job", {
 
 test_that("unknown script status remains inspectable", {
   job <- script_status_test_job()
-  stub(job_status.parade_script_job, "script_status", parade:::.script_status_unknown())
+  stub(job_status.parade_script_job, "script_status", caravan:::.script_status_unknown())
 
   result <- job_status(job)
   expect_equal(result$state, "UNKNOWN")
@@ -91,7 +91,7 @@ test_that("unknown script status remains inspectable", {
 
 test_that("unknown script status does not crash jobset progress", {
   job <- script_status_test_job()
-  stub(is_done.parade_script_job, "script_status", parade:::.script_status_unknown())
+  stub(is_done.parade_script_job, "script_status", caravan:::.script_status_unknown())
   jobs <- as_jobset(job)
 
   expect_false(is_done(job))

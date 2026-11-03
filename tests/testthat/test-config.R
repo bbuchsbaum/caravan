@@ -5,7 +5,6 @@ library(mockery)
 library(withr)
 
 # Load the package functions
-devtools::load_all(".", quiet = TRUE)
 
 # Helper: null-coalescing operator (from rlang) - in case not loaded
 if (!exists("%||%")) {

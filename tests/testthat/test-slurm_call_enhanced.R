@@ -282,25 +282,25 @@ test_that("argument helpers work correctly", {
 test_that("find_file_arg identifies file arguments", {
   # Should find file
   args1 <- list(x = 10, file = "data/input.csv", y = 20)
-  expect_equal(parade:::find_file_arg(args1), "data/input.csv")
+  expect_equal(caravan:::find_file_arg(args1), "data/input.csv")
   
   # Should find file with extension
   args2 <- list(input = "results.rds")
-  expect_equal(parade:::find_file_arg(args2), "results.rds")
+  expect_equal(caravan:::find_file_arg(args2), "results.rds")
   
   # Should return NULL if no file
   args3 <- list(x = 10, y = 20, z = 30)
-  expect_null(parade:::find_file_arg(args3))
+  expect_null(caravan:::find_file_arg(args3))
   
   # Should find path with slashes
   args4 <- list(path = "/home/user/data")
-  expect_equal(parade:::find_file_arg(args4), "/home/user/data")
+  expect_equal(caravan:::find_file_arg(args4), "/home/user/data")
 })
 
 test_that("expand_path_macros replaces all supported macros", {
   path <- "artifacts://results/{stem}_{name}_{date}_{run}.rds"
   
-  expanded <- parade:::expand_path_macros(
+  expanded <- caravan:::expand_path_macros(
     path,
     args = list(file = "data/myfile.csv"),
     name = "test-job"

@@ -6,7 +6,7 @@
 #' Converts single job objects or lists of jobs into a `parade_jobset`,
 #' ensuring uniform behavior across all job types.
 #'
-#' @param x A parade job object, list of jobs, or existing jobset
+#' @param x A caravan job object, list of jobs, or existing jobset
 #' @param ... Additional arguments (unused)
 #' @return A `parade_jobset` object
 #'

@@ -19,7 +19,7 @@ Intelligently creates either CLI or call arguments based on context
 }
 \note{
 This function is exported as \code{args()} and will mask \code{base::args} when
-parade is attached. Call \code{base::args} explicitly if you need the base version
+caravan is attached. Call \code{base::args} explicitly if you need the base version
 (e.g., \code{base::args(lm)}).
 }
 \examples{

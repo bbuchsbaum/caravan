@@ -2,7 +2,7 @@
 #' Generate scaffold scripts for SLURM flow execution
 #'
 #' Creates a set of helper scripts for submitting, monitoring, and collecting
-#' results from a parade flow on SLURM systems.
+#' results from a caravan flow on SLURM systems.
 #'
 #' @param flow A `parade_flow` object
 #' @param name Base name for generated scripts
@@ -49,7 +49,7 @@ scaffold_flow_job <- function(flow,
   driver <- c(
     "#!/usr/bin/env Rscript",
     "",
-    "library(parade)",
+    "library(caravan)",
     "paths_init(quiet = TRUE)",
     "",
     "# Load the deferred handle",
@@ -107,7 +107,7 @@ scaffold_flow_job <- function(flow,
   status_script <- c(
     "#!/usr/bin/env Rscript",
     "",
-    "library(parade)",
+    "library(caravan)",
     "paths_init(quiet = TRUE)",
     "",
     paste0("registry_dir <- '", registry_dir, "'"),
@@ -130,7 +130,7 @@ scaffold_flow_job <- function(flow,
   collect_script <- c(
     "#!/usr/bin/env Rscript",
     "",
-    "library(parade)",
+    "library(caravan)",
     "paths_init(quiet = TRUE)",
     "",
     paste0("registry_dir <- '", registry_dir, "'"),
@@ -160,7 +160,7 @@ scaffold_flow_job <- function(flow,
     "#!/bin/bash",
     "",
     "echo 'Cancelling jobs...'",
-    paste0("Rscript -e \"library(parade); paths_init(quiet=TRUE); ",
+    paste0("Rscript -e \"library(caravan); paths_init(quiet=TRUE); ",
            "d <- readRDS('", registry_dir, "/deferred.rds'); ",
            "deferred_cancel(d, which='all')\"")
   )

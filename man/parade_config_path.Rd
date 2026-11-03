@@ -2,7 +2,7 @@
 % Please edit documentation in R/config.R
 \name{parade_config_path}
 \alias{parade_config_path}
-\title{Locate the parade configuration file}
+\title{Locate the caravan configuration file}
 \usage{
 parade_config_path(create_dirs = TRUE)
 }
@@ -13,7 +13,7 @@ parade_config_path(create_dirs = TRUE)
 Path to configuration file
 }
 \description{
-Finds the appropriate location for the parade configuration file,
+Finds the appropriate location for the caravan configuration file,
 checking environment variables and standard locations.
 }
 \examples{

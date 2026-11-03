@@ -2,7 +2,7 @@
 
 #' Diagnose pipeline failures
 #'
-#' The primary entry point for understanding what went wrong in a parade
+#' The primary entry point for understanding what went wrong in a caravan
 #' pipeline run. Provides classified errors, actionable suggestions,
 #' and log locations.
 #'
@@ -17,13 +17,24 @@
 #' @export
 #' @examples
 #' \donttest{
-#' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
-#' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
-#'   distribute(dist_local(by = "group"))
-#' d <- submit(fl)
-#' deferred_await(d, timeout = 60)
-#' wtf(d)
+#' local({
+#'   old <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   example_dir <- tempfile("caravan-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
+#'   grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
+#'   fl <- flow(grid) |>
+#'     stage("calc", function(x) list(result = x^2),
+#'           schema = returns(result = dbl())) |>
+#'     distribute(dist_local(by = "group", within = "sequential"))
+#'   d <- submit(fl)
+#'   deferred_await(d, timeout = 60)
+#'   wtf(d)
+#' })
 #' }
 wtf <- function(x, verbose = 2L, max_errors = 20L, log_lines = 15L, ...) {
   UseMethod("wtf")
@@ -297,9 +308,34 @@ wtf.parade_jobset <- function(x, verbose = 2L, max_errors = 20L, log_lines = 15L
 .build_failure_report_jobset <- function(js, max_errors = 20L, log_lines = 15L) {
   jobs <- if (is.list(js)) js else as.list(js)
   all_classified <- list()
-  for (j in jobs) {
-    sub <- tryCatch(.build_failure_report_script_job(j, log_lines), error = function(e) NULL)
-    if (!is.null(sub)) all_classified <- c(all_classified, sub$errors)
+  states <- character(length(jobs))
+  for (i in seq_along(jobs)) {
+    j <- jobs[[i]]
+    state <- tryCatch(as.character(job_status(j)$state[[1L]]), error = function(e) "UNKNOWN")
+    states[[i]] <- state
+    if (!state %in% c("FAILED", "CANCELLED", "TIMEOUT")) next
+
+    sub <- if (inherits(j, "parade_script_job")) {
+      tryCatch(.build_failure_report_script_job(j, log_lines), error = function(e) NULL)
+    } else NULL
+    if (!is.null(sub) && length(sub$errors)) {
+      all_classified <- c(all_classified, sub$errors)
+    } else {
+      result <- j$result
+      msg <- if (inherits(result, "condition")) conditionMessage(result) else {
+        if (is.list(result)) result$error %||% "Job failed; inspect the result and logs."
+        else "Job failed; inspect the result and logs."
+      }
+      if (inherits(msg, "condition")) msg <- conditionMessage(msg)
+      if (!is.character(msg) || length(msg) != 1L || is.na(msg)) {
+        msg <- "Job failed; inspect the result and logs."
+      }
+      all_classified[[length(all_classified) + 1L]] <- list(
+        chunk_id = NA_integer_, row = NA_integer_, stage = NA_character_,
+        class = "r_error", label = "ERROR", detail = msg, suggestion = NULL,
+        context = j$name %||% "job", error_msg = msg
+      )
+    }
   }
 
   class_counts <- if (length(all_classified) > 0L) {
@@ -309,16 +345,16 @@ wtf.parade_jobset <- function(x, verbose = 2L, max_errors = 20L, log_lines = 15L
   }
 
   n_jobs <- length(jobs)
-  n_failed <- length(all_classified)
+  n_failed <- sum(states %in% c("FAILED", "CANCELLED", "TIMEOUT"))
 
   report <- list(
     run_id = "jobset",
-    backend = "slurm",
+    backend = "jobset",
     submitted_at = "?",
     stages = NULL,
     elapsed_sec = NA_real_,
     total = n_jobs,
-    n_ok = n_jobs - n_failed,
+    n_ok = sum(states == "COMPLETED"),
     n_failed = n_failed,
     class_counts = class_counts,
     errors = all_classified,
@@ -360,7 +396,11 @@ wtf.parade_jobset <- function(x, verbose = 2L, max_errors = 20L, log_lines = 15L
   cat("\n")
 
   if (report$n_failed == 0L) {
-    cat("No failures detected.\n")
+    cat("No failures detected.")
+    if (!is.na(report$total) && !is.na(report$n_ok) && report$n_ok < report$total) {
+      cat(" Some jobs have not completed or have unknown status.")
+    }
+    cat("\n")
     rule()
     cat("\n")
     return(invisible(report))

@@ -5,7 +5,7 @@
 #' @description
 #' Quickly open job log files in the system editor or viewer.
 #' 
-#' @param job A parade job object
+#' @param job A caravan job object
 #' @param ... Additional arguments passed to methods
 #' @return Invisible NULL
 #' 
@@ -520,8 +520,9 @@ registry_ls <- function(registry = NULL, pattern = NULL, limit = NULL) {
 #' }
 #' 
 #' @export
-registry_clean <- function(registry = NULL, older_than = NULL, 
-                          status = NULL, dry_run = FALSE) {
+registry_clean <- function(registry = NULL, older_than = NULL,
+                          status = c("COMPLETED", "FAILED", "ERROR", "CANCELLED"),
+                          dry_run = FALSE) {
   if (is.null(registry)) {
     paths <- paths_get()
     registry <- paths$registry
@@ -545,10 +546,17 @@ registry_clean <- function(registry = NULL, older_than = NULL,
     jobs <- jobs[jobs$created_time < cutoff, ]
   }
   
-  # Filter by status if specified
-  if (!is.null(status)) {
-    jobs <- jobs[jobs$status %in% status, ]
+  # Never remove a registry whose state is active or could not be established.
+  # An explicit status argument narrows this terminal-state allowlist; it cannot
+  # opt into PENDING, RUNNING, or UNKNOWN entries.
+  terminal <- c("COMPLETED", "FAILED", "ERROR", "CANCELLED")
+  requested <- if (is.null(status)) terminal else toupper(as.character(status))
+  invalid <- setdiff(requested, terminal)
+  if (length(invalid)) {
+    stop("`status` may contain only terminal states: ",
+         paste(terminal, collapse = ", "), call. = FALSE)
   }
+  jobs <- jobs[toupper(jobs$status) %in% requested, , drop = FALSE]
   
   if (nrow(jobs) == 0) {
     message("No jobs match cleanup criteria")
@@ -601,11 +609,14 @@ registry_clean <- function(registry = NULL, older_than = NULL,
 #' 
 #' @examples
 #' \donttest{
-#' # Get current registry
-#' use_registry()
-#' 
-#' # Switch to different registry
-#' use_registry("~/my_project/jobs")
+#' local({
+#'   old <- options(parade.paths = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   example_dir <- tempfile("caravan-registry-")
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   use_registry(example_dir)
+#'   use_registry()
+#' })
 #' }
 #' 
 #' @export

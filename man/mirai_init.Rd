@@ -2,7 +2,7 @@
 % Please edit documentation in R/mirai_utils.R
 \name{mirai_init}
 \alias{mirai_init}
-\title{Initialize mirai for parade}
+\title{Initialize mirai for caravan}
 \usage{
 mirai_init(n = NULL, dispatcher = TRUE)
 }
@@ -15,21 +15,19 @@ mirai_init(n = NULL, dispatcher = TRUE)
 Invisibly returns the previous future plan
 }
 \description{
-One-step initialization of mirai for use with parade workflows.
+One-step initialization of mirai for use with caravan workflows.
 Sets up daemons and configures the future plan.
 }
 \examples{
 \donttest{
 if (requireNamespace("mirai", quietly = TRUE) && 
     requireNamespace("future.mirai", quietly = TRUE)) {
-  # Initialize with default settings
-  mirai_init()
-  
-  # Initialize with 4 daemons
-  mirai_init(n = 4)
-  
-  # Clean up
-  mirai_stop()
+  local({
+    old_plan <- future::plan()
+    on.exit(future::plan(old_plan), add = TRUE)
+    on.exit(mirai_stop(), add = TRUE)
+    mirai_init(n = 2)
+  })
 }
 }
 }

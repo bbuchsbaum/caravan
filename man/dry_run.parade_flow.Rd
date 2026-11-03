@@ -24,6 +24,6 @@ Dry-run a flow: show plan and counts without executing
 \examples{
 grid <- data.frame(x = 1:3)
 fl <- flow(grid) |>
-  stage("sq", function(x) x^2, schema = returns(result = dbl()))
+  stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 dry_run(fl)
 }

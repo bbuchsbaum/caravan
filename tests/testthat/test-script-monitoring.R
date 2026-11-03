@@ -1,4 +1,3 @@
-devtools::load_all("/Users/bbuchsbaum/code/parade", quiet = TRUE)
 
 test_that(".parade_script_monitor_env injects run and path metadata", {
   root <- withr::local_tempdir()
@@ -15,7 +14,7 @@ test_that(".parade_script_monitor_env injects run and path metadata", {
 
   paths_init(create = TRUE, quiet = TRUE)
 
-  env <- parade:::.parade_script_monitor_env(
+  env <- caravan:::.parade_script_monitor_env(
     run_id = "script-env-1",
     name = "analysis",
     script = file.path(root, "analysis.R"),
@@ -55,7 +54,7 @@ test_that("parade_run_script_bt updates script run lifecycle on success", {
   writeLines("cat('ok\\n')", script_path)
 
   run_id <- "script-success"
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = run_id,
     backend = "slurm",
     n_chunks = 1L,
@@ -65,7 +64,7 @@ test_that("parade_run_script_bt updates script run lifecycle on success", {
     script_path = script_path
   )
 
-  env <- parade:::.parade_script_monitor_env(
+  env <- caravan:::.parade_script_monitor_env(
     run_id = run_id,
     name = "ok-script",
     script = script_path,
@@ -93,7 +92,7 @@ test_that("parade_run_script_bt updates script run lifecycle on success", {
   info <- run_info(run_id)
   expect_equal(info$status, "completed")
 
-  events <- parade:::.event_read(run_id)
+  events <- caravan:::.event_read(run_id)
   types <- vapply(events, function(ev) ev$event_type %||% "", character(1))
   expect_true(all(c("run_started", "run_completed") %in% types))
 })
@@ -119,7 +118,7 @@ test_that("parade_run_script_bt marks failed script runs as failed", {
   writeLines("quit(save = 'no', status = 1L)", script_path)
 
   run_id <- "script-fail"
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = run_id,
     backend = "slurm",
     n_chunks = 1L,
@@ -129,7 +128,7 @@ test_that("parade_run_script_bt marks failed script runs as failed", {
     script_path = script_path
   )
 
-  env <- parade:::.parade_script_monitor_env(
+  env <- caravan:::.parade_script_monitor_env(
     run_id = run_id,
     name = "fail-script",
     script = script_path,
@@ -157,6 +156,6 @@ test_that("parade_run_script_bt marks failed script runs as failed", {
   info <- run_info(run_id)
   expect_equal(info$status, "failed")
 
-  events <- parade:::.event_read(run_id, severity = "error")
+  events <- caravan:::.event_read(run_id, severity = "error")
   expect_true(any(vapply(events, function(ev) identical(ev$event_type, "run_failed"), logical(1))))
 })

@@ -2,7 +2,7 @@
 % Please edit documentation in R/collect.R
 \name{collect.parade_flow}
 \alias{collect.parade_flow}
-\title{Execute a parade flow and collect results}
+\title{Execute a caravan flow and collect results}
 \usage{
 \method{collect}{parade_flow}(
   x,
@@ -45,9 +45,19 @@ results from all stages.
 }
 \examples{
 \donttest{
-grid <- data.frame(x = 1:3)
-fl <- flow(grid) |>
-  stage("double", function(x) x * 2, schema = returns(result = dbl()))
-results <- collect(fl)
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  example_dir <- tempfile("caravan-collect-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(artifacts = file.path(example_dir, "artifacts"))
+  grid <- data.frame(x = 1:3)
+  fl <- flow(grid) |>
+    stage("double", function(x) list(result = x * 2),
+          schema = returns(result = dbl()))
+  results <- collect(fl, engine = "sequential")
+})
 }
 }

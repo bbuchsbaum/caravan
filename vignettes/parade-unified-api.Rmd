@@ -24,19 +24,19 @@ if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown"
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
-This vignette shows how the same Parade ergonomics apply whether you submit a
+This vignette shows how the same Caravan ergonomics apply whether you submit a
 script or a function. You get one mental model and one set of verbs.
 
 See also:
 
-- Overview: high-level orientation — [Overview](articles/parade-overview.html)
-- Quickstart: your first pipeline — [Quickstart](articles/parade-quickstart.html)
-- Sinks & Artifacts: robust I/O — [Sinks](articles/parade-sinks.html)
+- Overview: high-level orientation — [Overview](parade-overview.html)
+- Quickstart: your first pipeline — [Quickstart](parade-quickstart.html)
+- Sinks & Artifacts: robust I/O — [Sinks](parade-sinks.html)
 
 ## Quick start: function first
 
 ```r
-library(parade)
+library(caravan)
 
 # Local dev:
 paths_init(quiet = TRUE)

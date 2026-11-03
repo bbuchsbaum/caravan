@@ -2,7 +2,7 @@
 % Please edit documentation in R/job_class.R
 \name{print.parade_job}
 \alias{print.parade_job}
-\title{Print method for parade job objects}
+\title{Print method for caravan job objects}
 \usage{
 \method{print}{parade_job}(x, ...)
 }
@@ -15,7 +15,7 @@
 Invisibly returns the job object
 }
 \description{
-Common interface for printing all parade job types (script, function, local)
+Common interface for printing all caravan job types (script, function, local)
 }
 \examples{
 \dontrun{

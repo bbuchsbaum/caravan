@@ -2,7 +2,7 @@
 % Please edit documentation in R/ergonomics.R
 \name{parade_options}
 \alias{parade_options}
-\title{Global parade options (get/set)}
+\title{Global caravan options (get/set)}
 \usage{
 parade_options(
   error = NULL,

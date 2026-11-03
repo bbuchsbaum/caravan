@@ -4,8 +4,9 @@
 
 #' Emit a structured event to the run's event log
 #'
-#' Appends a single JSONL line. Safe for NFS concurrent appends
-#' (POSIX atomic for lines < 4096 bytes). Never fails the pipeline.
+#' Appends a single JSONL line on a best-effort basis. Concurrent writes to a
+#' shared file are not guaranteed to be atomic on all filesystems, including
+#' NFS. Logging errors do not fail the pipeline.
 #'
 #' @param run_id Character run identifier
 #' @param event_type One of the event taxonomy types
@@ -28,7 +29,7 @@
     extra <- list(...)
     if (length(extra) > 0L) event <- c(event, extra)
     line <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null")
-    # Atomic append: open in append mode, write single line, close
+    # Append a single line; shared-filesystem concurrency is not guaranteed.
     con <- file(path, open = "a", encoding = "UTF-8")
     on.exit(close(con))
     writeLines(as.character(line), con)
@@ -327,7 +328,7 @@ parade_heartbeat <- function(msg = NULL, stage = NULL, ...) {
 
 #' Emit a stage lifecycle update from a submitted script
 #'
-#' Use this in standalone `Rscript` jobs submitted through parade when you want
+#' Use this in standalone `Rscript` jobs submitted through caravan when you want
 #' the dashboard to show a clear current stage rather than forcing operators to
 #' infer progress from stdout/stderr logs.
 #'

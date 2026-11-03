@@ -1,23 +1,54 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 library(tibble)
 
 # ============================================================================
 # Internal function tests
 # ============================================================================
 
-test_that(".manifest_clean_params drops internal and upstream columns", {
+test_that(".manifest_clean_params preserves dotted user parameters", {
   row <- list(x = 1L, y = "a", .grid_id = 5, .grid_hash = "abc",
-              gen.output = "path/foo.rds")
-  clean <- parade:::.manifest_clean_params(row)
-  expect_equal(names(clean), c("x", "y"))
+              `model.version` = "v2")
+  clean <- caravan:::.manifest_clean_params(row)
+  expect_equal(names(clean), c("model.version", "x", "y"))
+  expect_equal(clean$model.version, "v2")
   expect_equal(clean$x, 1L)
   expect_equal(clean$y, "a")
 })
 
+test_that("manifest lookup does not reuse unversioned legacy records", {
+  tmp <- withr::local_tempdir()
+  out <- file.path(tmp, "out.rds")
+  saveRDS(1, out)
+  params <- list(x = 1L)
+  legacy <- list(
+    stage_id = "s1", param_cols = "x", params = params,
+    param_hash = digest::digest(params, algo = "sha1"),
+    output_paths = list(output = out)
+  )
+  path <- caravan:::.manifest_path("s1", tmp)
+  dir.create(dirname(path), recursive = TRUE)
+  writeLines(jsonlite::toJSON(legacy, auto_unbox = TRUE), path)
+
+  expect_null(caravan:::.manifest_lookup("s1", params, config_dir = tmp))
+})
+
+test_that("manifest records are atomically published as shards", {
+  tmp <- withr::local_tempdir()
+  out <- file.path(tmp, "out.rds")
+  saveRDS(1, out)
+  caravan:::.manifest_record("s1", list(x = 1L), c(output = out), config_dir = tmp)
+  path <- caravan:::.manifest_path("s1", tmp)
+  shard_dir <- paste0(path, ".d")
+
+  expect_false(file.exists(path))
+  expect_length(list.files(shard_dir, pattern = "\\.json$"), 1L)
+  expect_false(any(grepl("\\.tmp$", list.files(shard_dir))))
+  expect_length(caravan:::.manifest_read("s1", config_dir = tmp), 1L)
+})
+
 test_that(".manifest_clean_params sorts by name", {
   row <- list(z = 3, a = 1, m = 2)
-  clean <- parade:::.manifest_clean_params(row)
+  clean <- caravan:::.manifest_clean_params(row)
   expect_equal(names(clean), c("a", "m", "z"))
 })
 
@@ -28,7 +59,7 @@ test_that(".manifest_record writes, .manifest_read reads back correctly", {
   out1 <- file.path(tmp, "out1.rds")
   saveRDS(42, out1)
 
-  parade:::.manifest_record(
+  caravan:::.manifest_record(
     stage_id = "fit",
     params = list(sid = "sub-01", feat = "high"),
     output_paths = c(output = out1),
@@ -36,7 +67,7 @@ test_that(".manifest_record writes, .manifest_read reads back correctly", {
     config_dir = tmp
   )
 
-  records <- parade:::.manifest_read("fit", config_dir = tmp)
+  records <- caravan:::.manifest_read("fit", config_dir = tmp)
   expect_length(records, 1)
   rec <- records[[1]]
   expect_equal(rec$stage_id, "fit")
@@ -59,7 +90,7 @@ test_that(".manifest_read skips malformed lines", {
     '{"stage_id":"s1","param_hash":"def","params":{"x":2}}'
   ), path)
 
-  records <- parade:::.manifest_read("bad", config_dir = tmp)
+  records <- caravan:::.manifest_read("bad", config_dir = tmp)
   expect_length(records, 2)
   expect_equal(records[[1]]$param_hash, "abc")
   expect_equal(records[[2]]$param_hash, "def")
@@ -72,14 +103,14 @@ test_that(".manifest_read cache invalidates after append", {
   saveRDS(1, out1)
   saveRDS(2, out2)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out1), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out1), config_dir = tmp)
 
-  first <- parade:::.manifest_read("s1", config_dir = tmp)
+  first <- caravan:::.manifest_read("s1", config_dir = tmp)
   expect_length(first, 1)
 
-  parade:::.manifest_record("s1", list(a = 2L), c(output = out2), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 2L), c(output = out2), config_dir = tmp)
 
-  second <- parade:::.manifest_read("s1", config_dir = tmp)
+  second <- caravan:::.manifest_read("s1", config_dir = tmp)
   expect_length(second, 2)
   expect_equal(vapply(second, `[[`, character(1), "param_hash"),
                c(digest::digest(list(a = 1L), algo = "sha1"),
@@ -92,9 +123,9 @@ test_that(".manifest_lookup exact match succeeds", {
   saveRDS(1, out)
 
   params <- list(a = 1L, b = "x")
-  parade:::.manifest_record("s1", params, c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", params, c(output = out), config_dir = tmp)
 
-  found <- parade:::.manifest_lookup("s1", params, config_dir = tmp)
+  found <- caravan:::.manifest_lookup("s1", params, config_dir = tmp)
   expect_false(is.null(found))
   expect_equal(found$output_paths$output, out)
 })
@@ -107,11 +138,11 @@ test_that(".manifest_lookup uses newest matching manifest entry", {
   saveRDS(2, out2)
 
   params <- list(a = 1L, b = "x")
-  parade:::.manifest_record("s1", params, c(output = out1), config_dir = tmp)
-  parade:::.manifest_record("s1", list(a = 2L, b = "y"), c(output = out2), config_dir = tmp)
-  parade:::.manifest_record("s1", params, c(output = out2), config_dir = tmp)
+  caravan:::.manifest_record("s1", params, c(output = out1), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 2L, b = "y"), c(output = out2), config_dir = tmp)
+  caravan:::.manifest_record("s1", params, c(output = out2), config_dir = tmp)
 
-  found <- parade:::.manifest_lookup("s1", params, config_dir = tmp)
+  found <- caravan:::.manifest_lookup("s1", params, config_dir = tmp)
   expect_false(is.null(found))
   expect_equal(found$output_paths$output, out2)
 })
@@ -122,9 +153,9 @@ test_that(".manifest_lookup rejects entries whose output names no longer match",
   saveRDS(1, out)
 
   params <- list(a = 1L)
-  parade:::.manifest_record("s1", params, c(perf = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", params, c(perf = out), config_dir = tmp)
 
-  found <- parade:::.manifest_lookup(
+  found <- caravan:::.manifest_lookup(
     "s1",
     params,
     produces_names = c("perf", "conn"),
@@ -138,9 +169,9 @@ test_that(".manifest_lookup returns NULL on miss", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
 
-  miss <- parade:::.manifest_lookup("s1", list(a = 2L), config_dir = tmp)
+  miss <- caravan:::.manifest_lookup("s1", list(a = 2L), config_dir = tmp)
   expect_null(miss)
 })
 
@@ -150,12 +181,12 @@ test_that(".manifest_lookup rejects entries whose output files were deleted", {
   saveRDS(1, out)
 
   params <- list(a = 1L)
-  parade:::.manifest_record("s1", params, c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", params, c(output = out), config_dir = tmp)
 
   # Delete the output file
 
   unlink(out)
-  found <- parade:::.manifest_lookup("s1", params, config_dir = tmp)
+  found <- caravan:::.manifest_lookup("s1", params, config_dir = tmp)
   expect_null(found)
 })
 
@@ -165,10 +196,10 @@ test_that(".manifest_lookup_subset finds entries with fewer columns", {
   saveRDS(1, out)
 
   # Record with only {a}
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
 
   # Look up with {a, b} — should find the subset
-  matches <- parade:::.manifest_lookup_subset("s1", list(a = 1L, b = "x"),
+  matches <- caravan:::.manifest_lookup_subset("s1", list(a = 1L, b = "x"),
                                                config_dir = tmp)
   expect_length(matches, 1)
 })
@@ -178,10 +209,10 @@ test_that(".manifest_lookup_subset rejects value mismatches", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
 
   # a=2 doesn't match a=1
-  matches <- parade:::.manifest_lookup_subset("s1", list(a = 2L, b = "x"),
+  matches <- caravan:::.manifest_lookup_subset("s1", list(a = 2L, b = "x"),
                                                config_dir = tmp)
   expect_length(matches, 0)
 })
@@ -191,10 +222,10 @@ test_that(".manifest_lookup_subset ignores entries with missing files", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
   unlink(out)
 
-  matches <- parade:::.manifest_lookup_subset("s1", list(a = 1L, b = "x"),
+  matches <- caravan:::.manifest_lookup_subset("s1", list(a = 1L, b = "x"),
                                                config_dir = tmp)
   expect_length(matches, 0)
 })
@@ -217,7 +248,7 @@ test_that("completion_manifest verify adds outputs_current column", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
 
   tbl <- completion_manifest("s1", verify = TRUE, config_dir = tmp)
   expect_true("outputs_current" %in% names(tbl))
@@ -234,13 +265,13 @@ test_that("manifest_adopt creates new entries with added params", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
 
   result <- manifest_adopt("s1", new_params = list(b = "x"), config_dir = tmp)
   expect_equal(nrow(result), 1)
 
   # New entry should be findable by exact lookup
-  found <- parade:::.manifest_lookup("s1", list(a = 1L, b = "x"),
+  found <- caravan:::.manifest_lookup("s1", list(a = 1L, b = "x"),
                                       config_dir = tmp)
   expect_false(is.null(found))
   expect_equal(found$output_paths$output, out)
@@ -251,14 +282,14 @@ test_that("manifest_adopt dry_run=TRUE doesn't write", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
-  before <- parade:::.manifest_read("s1", config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  before <- caravan:::.manifest_read("s1", config_dir = tmp)
 
   result <- manifest_adopt("s1", new_params = list(b = "x"),
                             dry_run = TRUE, config_dir = tmp)
   expect_equal(nrow(result), 1)
 
-  after <- parade:::.manifest_read("s1", config_dir = tmp)
+  after <- caravan:::.manifest_read("s1", config_dir = tmp)
   # Should not have written a new record
   expect_equal(length(after), length(before))
 })
@@ -269,7 +300,7 @@ test_that("manifest_adopt skips entries already containing new cols", {
   saveRDS(1, out)
 
   # Entry already has 'b'
-  parade:::.manifest_record("s1", list(a = 1L, b = "x"),
+  caravan:::.manifest_record("s1", list(a = 1L, b = "x"),
                              c(output = out), config_dir = tmp)
 
   result <- manifest_adopt("s1", new_params = list(b = "y"), config_dir = tmp)
@@ -281,12 +312,13 @@ test_that("manifest_clear removes the file", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
-  path <- parade:::.manifest_path("s1", config_dir = tmp)
-  expect_true(file.exists(path))
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  path <- caravan:::.manifest_path("s1", config_dir = tmp)
+  expect_true(dir.exists(paste0(path, ".d")))
 
   manifest_clear("s1", config_dir = tmp)
   expect_false(file.exists(path))
+  expect_false(dir.exists(paste0(path, ".d")))
 })
 
 test_that("manifest_clear with NULL clears all stages", {
@@ -294,13 +326,13 @@ test_that("manifest_clear with NULL clears all stages", {
   out <- file.path(tmp, "result.rds")
   saveRDS(1, out)
 
-  parade:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
-  parade:::.manifest_record("s2", list(b = 2L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s1", list(a = 1L), c(output = out), config_dir = tmp)
+  caravan:::.manifest_record("s2", list(b = 2L), c(output = out), config_dir = tmp)
 
   manifest_clear(config_dir = tmp)
 
-  expect_false(file.exists(parade:::.manifest_path("s1", config_dir = tmp)))
-  expect_false(file.exists(parade:::.manifest_path("s2", config_dir = tmp)))
+  expect_false(file.exists(caravan:::.manifest_path("s1", config_dir = tmp)))
+  expect_false(file.exists(caravan:::.manifest_path("s2", config_dir = tmp)))
 })
 
 # ============================================================================
@@ -329,7 +361,7 @@ test_that("script_stage with skip_if_exists records manifest entry after executi
   expect_equal(nrow(res), 2)
 
   # Manifest should have been written
-  records <- parade:::.manifest_read("s1", config_dir = tmp)
+  records <- caravan:::.manifest_read("s1", config_dir = tmp)
   expect_length(records, 2)
 })
 
@@ -443,7 +475,7 @@ test_that("manifest skip does not reuse stale entry after produces expands", {
   expect_true(res2$s1.conn[[1]]$written)
   expect_true(file.exists(res2$s1.conn[[1]]$path))
 
-  latest <- tail(parade:::.manifest_read("s1", config_dir = tmp), 1)[[1]]
+  latest <- tail(caravan:::.manifest_read("s1", config_dir = tmp), 1)[[1]]
   expect_equal(sort(unlist(latest$output_names, use.names = FALSE)),
                c("conn", "perf"))
 })
@@ -514,6 +546,6 @@ test_that("use_manifest=FALSE disables manifest recording", {
   expect_equal(nrow(res), 1)
 
   # Manifest should NOT have been written
-  records <- parade:::.manifest_read("s1", config_dir = tmp)
+  records <- caravan:::.manifest_read("s1", config_dir = tmp)
   expect_length(records, 0)
 })

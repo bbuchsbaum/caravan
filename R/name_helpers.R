@@ -99,7 +99,7 @@ index <- function(prefix = "job", width = 0) {
 #' }
 #' }
 #' 
-#' @note This function masks `digest::digest` when parade is attached. Prefer
+#' @note This function masks `digest::digest` when caravan is attached. Prefer
 #' `name_digest()` as an explicit alias to avoid confusion.
 #' @export
 digest <- function(prefix = "job", length = 8) {

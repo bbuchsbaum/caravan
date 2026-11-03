@@ -5,12 +5,7 @@
   p <- .slurm_cmd(cmd)
   if (is.na(p)) return(structure(character(), status = 127L))
 
-  # Quote arguments containing % to prevent shell interpretation of format specifiers
-  args_quoted <- vapply(args, function(a) {
-    if (grepl("%", a, fixed = TRUE)) shQuote(a) else a
-  }, character(1), USE.NAMES = FALSE)
-
-  out <- try(suppressWarnings(system2(p, args_quoted, stdout = TRUE, stderr = TRUE, wait = TRUE)), silent = TRUE)
+  out <- try(suppressWarnings(system2(p, .parade_system2_args(args), stdout = TRUE, stderr = TRUE, wait = TRUE)), silent = TRUE)
   if (inherits(out, "try-error")) return(structure(character(), status = 127L))
   attr(out, "status") <- attr(out, "status") %||% 0L
   out
@@ -21,7 +16,7 @@
 
 .slurm_squeue_info <- function(job_id) {
   # Use squeue with custom format
-  out <- .run_cmd("squeue", c("-j", as.character(job_id), "-h", "-o", shQuote("%T|%M|%l|%C|%D|%R|%N")))
+  out <- .run_cmd("squeue", c("-j", as.character(job_id), "-h", "-o", "%T|%M|%l|%C|%D|%R|%N"))
   # If command failed or output malformed, return unknowns
   st <- attr(out, "status") %||% 0L
   if (length(out) == 0L || st != 0L || !grepl("|", out[[1]], fixed = TRUE)) {
@@ -44,7 +39,7 @@
   exit_code_raw <- if (length(best) >= 9) best[[9]] else NA_character_
   derived_exit  <- if (length(best) >= 10) best[[10]] else NA_character_
   comment       <- if (length(best) >= 11) best[[11]] else NA_character_
-  # Parse ExitCode format "exit:signal" (e.g., "0:9" = OOM kill via signal 9)
+  # Parse ExitCode format "exit:signal" (e.g., "0:9" means signal 9).
   exit_parsed <- .parse_slurm_exit_code(exit_code_raw)
   list(JobID=best[[1]], State=best[[2]], ElapsedRaw=suppressWarnings(as.numeric(best[[3]])), TotalCPU=.parade_parse_hms(best[[4]]), AllocCPUS=suppressWarnings(as.numeric(best[[5]])), ReqMem=best[[6]], MaxRSS=.parade_parse_mem(best[[7]]), MaxVMSize=.parade_parse_mem(best[[8]]),
        ExitCode=exit_code_raw, ExitStatus=exit_parsed$exit, ExitSignal=exit_parsed$signal,
@@ -215,7 +210,7 @@ script_done <- function(job) {
   # Try batchtools first (fast if it works)
   bt_result <- tryCatch({
     if (requireNamespace("batchtools", quietly = TRUE)) {
-      reg <- batchtools::loadRegistry(job$registry_dir, writeable = FALSE)
+      reg <- bt_load_registry(job$registry_dir, writeable = FALSE)
       st <- batchtools::getStatus(reg)
       return((st$done + st$error) > 0)
     }

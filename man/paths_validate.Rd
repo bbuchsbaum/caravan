@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths_validate.R
 \name{paths_validate}
 \alias{paths_validate}
-\title{Validate parade path configuration}
+\title{Validate caravan path configuration}
 \usage{
 paths_validate(
   paths = paths_get(),

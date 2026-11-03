@@ -96,7 +96,7 @@ sink_quick <- function(fields,
   }
   
   # Wrap writer for atomic writes if requested
-  if (atomic && !is.character(write)) {
+  if (atomic) {
     final_writer <- function(x, path, ...) {
       .write_atomic_generic(writer, x, path, ...)
     }

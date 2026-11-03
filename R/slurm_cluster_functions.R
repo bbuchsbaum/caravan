@@ -77,7 +77,7 @@ make_parade_slurm_cf <- function(template) {
         )), silent = TRUE)
 
         if (!inherits(sq_out, "try-error") && length(sq_out) > 0) {
-          job_id <- stringi::stri_trim_both(sq_out[1])
+          job_id <- trimws(sq_out[1])
           if (grepl("^[0-9]+$", job_id)) {
             result$batch.id <- job_id
             return(result)

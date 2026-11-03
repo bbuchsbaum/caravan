@@ -7,7 +7,7 @@
 collect_result(x)
 }
 \arguments{
-\item{x}{A parade job object (parade_local_job or parade_script_job)}
+\item{x}{A caravan job object (parade_local_job or parade_script_job)}
 }
 \value{
 The result value from the completed job.

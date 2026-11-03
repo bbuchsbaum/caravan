@@ -2,7 +2,7 @@
 % Please edit documentation in R/init_hpc.R
 \name{parade_init_hpc}
 \alias{parade_init_hpc}
-\title{Initialize parade for HPC use}
+\title{Initialize caravan for HPC use}
 \usage{
 parade_init_hpc(
   scratch = NULL,
@@ -18,7 +18,7 @@ parade_init_hpc(
 )
 }
 \arguments{
-\item{scratch}{Optional shared scratch root. If \code{NULL}, parade auto-detects
+\item{scratch}{Optional shared scratch root. If \code{NULL}, caravan auto-detects
 using \code{PARADE_SCRATCH} / \code{SCRATCH} / scheduler variables.}
 
 \item{artifacts}{Optional artifacts root. Default is \code{file.path(scratch, "parade-artifacts")}.}
@@ -44,7 +44,7 @@ A list containing the configured \code{paths}, config path (if persisted),
 template path (if created), and doctor results.
 }
 \description{
-A one-command setup helper for running parade on HPC clusters. This function:
+A one-command setup helper for running caravan on HPC clusters. This function:
 \itemize{
 \item Initializes path aliases in \code{"hpc"} mode (prefer shared scratch over node-local tmp).
 \item Optionally creates required directories and runs a quick doctor check.

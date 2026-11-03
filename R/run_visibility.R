@@ -25,7 +25,7 @@
 
 #' @keywords internal
 .parade_code_version <- function() {
-  v <- tryCatch(as.character(utils::packageVersion("parade")), error = function(e) NA_character_)
+  v <- tryCatch(as.character(utils::packageVersion("caravan")), error = function(e) NA_character_)
   v %||% NA_character_
 }
 
@@ -117,18 +117,41 @@
     error = function(e) "<body-unavailable>"
   )
   formals_txt <- tryCatch(
-    paste(names(formals(f)), collapse = ","),
+    lapply(as.list(formals(f)), function(x) {
+      paste(deparse(x, width.cutoff = 500L), collapse = "\n")
+    }),
     error = function(e) "<formals-unavailable>"
   )
-  digest::digest(list(formals = formals_txt, body = body_txt), algo = "sha1")
+  formal_names <- tryCatch(names(formals(f)), error = function(e) NULL)
+  if (is.list(formals_txt) && !is.null(formal_names)) names(formals_txt) <- formal_names
+
+  # A function body alone does not identify a closure: `function(x) x * k`
+  # changes meaning when its captured `k` changes. Include stable digests of
+  # referenced bindings where they can be discovered. This cannot represent
+  # external state (files, options, databases), so fingerprints remain cache
+  # keys rather than proofs of semantic equivalence.
+  globals <- tryCatch({
+    if (!requireNamespace("codetools", quietly = TRUE)) character() else {
+      codetools::findGlobals(f, merge = FALSE)$variables %||% character()
+    }
+  }, error = function(e) character())
+  env <- environment(f)
+  captures <- lapply(sort(unique(globals)), function(nm) {
+    value <- tryCatch(get(nm, envir = env, inherits = TRUE), error = function(e) NULL)
+    value_sig <- if (is.function(value)) {
+      tryCatch(.parade_function_signature(value), error = function(e) "<function-unavailable>")
+    } else {
+      tryCatch(digest::digest(value, algo = "sha1"), error = function(e) "<value-unavailable>")
+    }
+    list(name = nm, signature = value_sig)
+  })
+  digest::digest(list(formals = formals_txt, body = body_txt, captures = captures), algo = "sha1")
 }
 
 #' @keywords internal
 .parade_stage_signature <- function(st) {
-  ptype_classes <- tryCatch(
-    lapply(st$ptype, function(x) class(x)[1] %||% class(x)),
-    error = function(e) list()
-  )
+  ptype_signature <- tryCatch(digest::digest(st$ptype, algo = "sha1"),
+                              error = function(e) "<ptype-unavailable>")
   sink_sig <- if (is.null(st$sink)) NULL else {
     list(
       fields = st$sink$fields %||% NULL,
@@ -153,7 +176,7 @@
     needs = st$needs %||% character(),
     fn = .parade_function_signature(st$f),
     ptype_names = names(st$ptype) %||% character(),
-    ptype_classes = ptype_classes,
+    ptype_signature = ptype_signature,
     prefix = isTRUE(st$prefix),
     hoist_struct = isTRUE(st$hoist_struct),
     const = st$const %||% list(),
@@ -339,7 +362,7 @@
   out
 }
 
-#' Summarize a parade run
+#' Summarize a caravan run
 #'
 #' Returns a compact run summary with run-level and stage-level status. Works on:
 #' - tibbles returned by [collect()] on a `parade_flow`

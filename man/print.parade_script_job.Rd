@@ -2,7 +2,7 @@
 % Please edit documentation in R/script_jobs.R
 \name{print.parade_script_job}
 \alias{print.parade_script_job}
-\title{Print method for parade script jobs}
+\title{Print method for caravan script jobs}
 \usage{
 \method{print}{parade_script_job}(x, ...)
 }
@@ -15,7 +15,7 @@
 The input object (invisibly)
 }
 \description{
-Print method for parade script jobs
+Print method for caravan script jobs
 }
 \examples{
 \dontrun{

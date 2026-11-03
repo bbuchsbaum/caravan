@@ -2,12 +2,12 @@
 % Please edit documentation in R/job_class.R
 \name{.parade_packed_n_errors}
 \alias{.parade_packed_n_errors}
-\title{Read the per-chunk error count for a packed parade job}
+\title{Read the per-chunk error count for a packed caravan job}
 \usage{
 .parade_packed_n_errors(x)
 }
 \arguments{
-\item{x}{A parade job (script or local) belonging to a packed jobset.}
+\item{x}{A caravan job (script or local) belonging to a packed jobset.}
 }
 \value{
 An integer count of element-level errors, or \code{NA_integer_}.

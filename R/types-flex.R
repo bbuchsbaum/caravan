@@ -134,8 +134,14 @@ pred <- function(fn, cost = c("light", "full"), timeout = NULL) {
 
 #' @keywords internal
 .parade_check_type.default <- function(x, spec, mode) {
-  # For standard types (dbl, int, chr, etc.), delegate to existing validation
-  TRUE  # Placeholder - actual validation happens in existing type system
+  # Standard specifications are vctrs prototypes (e.g. dbl(), chr()). A
+  # successful cast is the package's compatibility rule; accepting every
+  # value here made one_of() silently accept incompatible standard types.
+  if (is.null(x)) return(FALSE)
+  isTRUE(tryCatch({
+    vctrs::vec_cast(x, spec)
+    TRUE
+  }, error = function(e) FALSE))
 }
 
 #' @keywords internal  

@@ -37,7 +37,7 @@ A named list with:
 }
 }
 \description{
-Parade cannot (yet) provide a true "SLURM pool" that behaves like a single
+Caravan cannot (yet) provide a true "SLURM pool" that behaves like a single
 machine with \code{nodes * cpus_per_node} cores. However, you can get close today
 by using packed jobs (\code{slurm_map(.packed = TRUE, ...)}) and choosing a chunk
 size that yields a reasonable number of SLURM jobs.

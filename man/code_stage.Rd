@@ -2,7 +2,7 @@
 % Please edit documentation in R/code_stage.R
 \name{code_stage}
 \alias{code_stage}
-\title{Add an inline code block stage to a parade flow}
+\title{Add an inline code block stage to a caravan flow}
 \usage{
 code_stage(
   fl,

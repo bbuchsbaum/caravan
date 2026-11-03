@@ -43,7 +43,7 @@ processes run concurrently; when one finishes the next group starts
 (work-queue pattern). This is the right choice when you want to
 pack a full node with multiple processes that each use their own
 internal parallelism (e.g., a script that calls \code{furrr},
-\code{mclapply}, or relies on threaded BLAS/OpenMP). Parade manages the
+\code{mclapply}, or relies on threaded BLAS/OpenMP). Caravan manages the
 pool; the script manages its own cores.
 }}
 
@@ -54,7 +54,7 @@ Defaults to \code{NULL}, which reads \code{SLURM_CPUS_PER_TASK} at runtime
 (i.e., matches your \code{cpus_per_task} resource request).}
 
 \item{template}{Path to the SLURM batch template file. Defaults to
-parade's built-in template (\code{slurm_template()}). Override for custom
+caravan's built-in template (\code{slurm_template()}). Override for custom
 preambles, module stacks, or site-specific \verb{#SBATCH} flags.}
 
 \item{resources}{Named list of SLURM resource requests. These are
@@ -71,7 +71,7 @@ number of jobs when you have many small groups.
 }}
 
 \item{target_jobs}{Integer; the total number of SLURM jobs to create.
-Overrides \code{chunks_per_job} — parade divides groups evenly across
+Overrides \code{chunks_per_job} — caravan divides groups evenly across
 this many jobs. Useful when you have a fixed allocation and want to
 fill it.
 \itemize{
@@ -85,6 +85,10 @@ it is killed and its result (if any) is recovered. Useful as a safety
 net when stage functions may leave background processes that prevent
 clean exit.
 \code{NULL} (default) means no timeout.}
+
+\item{parallel_opts}{Named list of GNU Parallel options used only when
+\code{within = "parallel"}. Supported entries are \code{parallel_bin}, \code{resume},
+\code{joblog}, \code{tagstring}, \code{memfree}, and \code{extra_args}.}
 }
 \value{
 A \code{parade_dist} object for SLURM execution
@@ -96,7 +100,7 @@ Each SLURM job runs one or more \strong{groups} of grid rows.
 \section{Two levels of parallelism}{
 
 
-Parade distributes work in two layers:
+Caravan distributes work in two layers:
 \enumerate{
 \item \strong{Between jobs} (\code{by}): the grid is split into groups by the \code{by}
 columns, and groups are packed into SLURM jobs. Each job is an
@@ -114,11 +118,11 @@ Standard SLURM resources (passed as \verb{#SBATCH} flags): \code{account},
 \code{partition}, \code{qos}, \code{time}, \code{mem}, \code{nodes}, \code{ntasks},
 \code{ntasks_per_node}, \code{cpus_per_task}.
 
-Parade-specific resource keys:
+Caravan-specific resource keys:
 \describe{
 \item{\code{modules}}{Character vector of environment modules to load on
 compute nodes (e.g., \code{c("StdEnv/2023", "r/4.4.0")}). By default
-parade captures the modules loaded in your current R session and
+caravan captures the modules loaded in your current R session and
 replays them on the nodes. Set \code{modules = character(0)} to suppress
 all module handling.}
 }

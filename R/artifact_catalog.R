@@ -8,7 +8,7 @@ NULL
 
 #' List artifacts from a directory
 #'
-#' Scans a directory for Parade sink sidecars (`<artifact>.json`) and returns a
+#' Scans a directory for Caravan sink sidecars (`<artifact>.json`) and returns a
 #' tibble that can be filtered/searched.
 #'
 #' @param dir Directory (or alias path like `"artifacts://"`). Defaults to `"artifacts://"`.

@@ -11,7 +11,7 @@ test_that("topological sort detects circular dependencies", {
 
 test_that(".parade_cast_to_ptype_row wraps flexible types and NULL", {
   # Access internal helper
-  cast <- parade:::.parade_cast_to_ptype_row
+  cast <- caravan:::.parade_cast_to_ptype_row
   ptype <- returns(model = isa("lm"))
 
   # Classed object should be wrapped into list column
@@ -27,7 +27,7 @@ test_that(".parade_cast_to_ptype_row wraps flexible types and NULL", {
 })
 
 test_that(".parade_cast_to_ptype_row surfaces cast failures", {
-  cast <- parade:::.parade_cast_to_ptype_row
+  cast <- caravan:::.parade_cast_to_ptype_row
   ptype <- returns(x = int())
 
   old <- getOption("parade.cast_failure")

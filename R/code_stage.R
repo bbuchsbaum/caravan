@@ -1,6 +1,6 @@
 # Code stages ---------------------------------------------------------------
 
-#' Add an inline code block stage to a parade flow
+#' Add an inline code block stage to a caravan flow
 #'
 #' `code_stage()` captures a bare code block via non-standard evaluation and
 #' wraps it in a function whose formals are automatically inferred from the

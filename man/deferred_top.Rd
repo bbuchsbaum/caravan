@@ -41,12 +41,22 @@ which works across all backends.
 }
 \examples{
 \donttest{
-grid <- data.frame(x = 1:6, g = rep(1:3, 2))
-fl <- flow(grid) |>
-  stage("s", function(x) { Sys.sleep(1); list(y = x^2) },
-         schema = returns(y = dbl())) |>
-  distribute(dist_local(by = "g"))
-d <- submit(fl)
-deferred_top(d, refresh = 1, once = TRUE)
+local({
+  old <- options(parade.paths = NULL, parade.log_path = NULL)
+  on.exit(options(old), add = TRUE)
+  example_dir <- tempfile("caravan-example-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(profile = "local", quiet = TRUE)
+  paths_set(registry = file.path(example_dir, "registry"),
+            artifacts = file.path(example_dir, "artifacts"))
+  grid <- data.frame(x = 1:6, g = rep(1:3, 2))
+  fl <- flow(grid) |>
+    stage("s", function(x) list(y = x^2), schema = returns(y = dbl())) |>
+    distribute(dist_local(by = "g", within = "sequential"))
+  d <- submit(fl)
+  deferred_top(d, refresh = 1, once = TRUE)
+  deferred_await(d, timeout = 60)
+})
 }
 }

@@ -4,7 +4,7 @@ template:
   package: albersdown
 home:
   title: Declarative Parallel Dataflow with Future/Mirai/SLURM
-  description: Parade builds typed, parallel pipelines with artifact sinks and HPC
+  description: Caravan builds typed, parallel pipelines with artifact sinks and HPC
     ergonomics.
   links:
   - text: Quickstart (start here)

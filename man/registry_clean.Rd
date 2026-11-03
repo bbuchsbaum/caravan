@@ -7,7 +7,7 @@
 registry_clean(
   registry = NULL,
   older_than = NULL,
-  status = NULL,
+  status = c("COMPLETED", "FAILED", "ERROR", "CANCELLED"),
   dry_run = FALSE
 )
 }

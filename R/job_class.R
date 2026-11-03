@@ -1,9 +1,9 @@
 # Unified job class hierarchy --------------------------------------------
 
-#' Print method for parade job objects
+#' Print method for caravan job objects
 #'
 #' @description
-#' Common interface for printing all parade job types (script, function, local)
+#' Common interface for printing all caravan job types (script, function, local)
 #'
 #' @param x A parade_job object
 #' @param ... Additional arguments (unused)
@@ -64,7 +64,7 @@ print.parade_local_job <- function(x, ...) {
 
 #' Check if a job is done
 #'
-#' @param x A parade job object (parade_job, parade_script_job, or parade_local_job)
+#' @param x A caravan job object (parade_job, parade_script_job, or parade_local_job)
 #' @return Logical scalar; TRUE if the job has completed.
 #' @examples
 #' \dontrun{
@@ -102,7 +102,7 @@ is_done.parade_job <- function(x) {
 
 #' Get job status
 #'
-#' @param x A parade job object (parade_job, parade_script_job, or parade_local_job)
+#' @param x A caravan job object (parade_job, parade_script_job, or parade_local_job)
 #' @return A tibble containing job status information
 #' @examples
 #' \dontrun{
@@ -169,13 +169,13 @@ job_status.parade_script_job <- function(x) {
   )
 }
 
-#' Read the per-chunk error count for a packed parade job
+#' Read the per-chunk error count for a packed caravan job
 #'
 #' Returns `NA_integer_` for non-packed jobs or when the summary cannot be
 #' read. Otherwise returns the number of element-level failures recorded in
 #' the chunk's `summary.rds`.
 #'
-#' @param x A parade job (script or local) belonging to a packed jobset.
+#' @param x A caravan job (script or local) belonging to a packed jobset.
 #' @return An integer count of element-level errors, or `NA_integer_`.
 #' @keywords internal
 .parade_packed_n_errors <- function(x) {
@@ -218,7 +218,7 @@ job_status.parade_script_job <- function(x) {
 }
 
 #' Collect results from a job
-#' @param x A parade job object (parade_local_job or parade_script_job)
+#' @param x A caravan job object (parade_local_job or parade_script_job)
 #' @return The result value from the completed job.
 #' @examples
 #' \dontrun{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths.R
 \name{paths_get}
 \alias{paths_get}
-\title{Get current parade path configuration}
+\title{Get current caravan path configuration}
 \usage{
 paths_get()
 }
@@ -10,7 +10,7 @@ paths_get()
 Named list of configured paths
 }
 \description{
-Get current parade path configuration
+Get current caravan path configuration
 }
 \examples{
 paths <- paths_get()

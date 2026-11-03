@@ -121,12 +121,13 @@ test_that("submit() does not leave .fl_data/.chunks_data on returned handle", {
 })
 
 test_that("print.parade_flow shows script_stage metadata", {
-  skip_if_not(file.exists("helper-script-noop.R"),
-              message = "helper script not available")
+  helper_dir <- withr::local_tempdir("caravan-noop-")
+  helper_script <- file.path(helper_dir, "helper-script-noop.R")
+  writeLines("invisible(NULL)", helper_script)
 
   fl <- flow(tibble::tibble(x = 1:2)) |>
     script_stage("s1",
-      script = "helper-script-noop.R",
+      script = helper_script,
       produces = c(out = "results/{x}/output.rds")
     )
 
@@ -241,10 +242,21 @@ skip_if_no_gnu_parallel <- function() {
   if (!nzchar(p)) testthat::skip("GNU parallel not on PATH")
   v <- tryCatch(suppressWarnings(system2(p, "--version", stdout = TRUE, stderr = TRUE)),
                 error = function(e) character())
-  if (!length(v) || !grepl("^GNU parallel", v[[1]])) {
+  if (!length(v) || !any(grepl("^GNU parallel", v))) {
     testthat::skip("`parallel` on PATH is not GNU Parallel")
   }
 }
+
+test_that("GNU Parallel row command uses absolute, shell-safe executable paths", {
+  rscript <- file.path(R.home("bin"), "Rscript")
+  wrapper <- "/tmp/path with spaces/parade_run_row.R"
+  command <- caravan:::.parade_parallel_row_command(rscript, wrapper, 1:2)
+
+  expect_identical(command[[1L]], shQuote(rscript))
+  expect_identical(command[[3L]], shQuote(wrapper))
+  expect_identical(command[4:7], c("{}", ":::", "1", "2"))
+  expect_false(identical(command[[1L]], "Rscript"))
+})
 
 test_that("within='parallel' runs rows as isolated Rscript subprocesses", {
   skip_if_no_gnu_parallel()
@@ -324,7 +336,7 @@ test_that("within='parallel' produces per-row RDS files named after row ids", {
 test_that(".parade_find_parallel errors when binary is missing or wrong kind", {
   # Explicit non-existent path
   expect_error(
-    parade:::.parade_find_parallel("/definitely/not/a/real/path/parallel"),
+    caravan:::.parade_find_parallel("/definitely/not/a/real/path/parallel"),
     "parallel_bin"
   )
 
@@ -333,7 +345,7 @@ test_that(".parade_find_parallel errors when binary is missing or wrong kind", {
   writeLines(c("#!/bin/sh", "echo 'not gnu parallel'"), fake)
   Sys.chmod(fake, "0755")
   on.exit(unlink(fake), add = TRUE)
-  expect_error(parade:::.parade_find_parallel(fake), "GNU Parallel")
+  expect_error(caravan:::.parade_find_parallel(fake), "GNU Parallel")
 })
 
 test_that("parallel_opts validation rejects unknown keys", {
@@ -405,7 +417,7 @@ test_that("within='callr' mirrors child stdout/stderr into parent with per-group
   sink(out_con, type = "output")
   sink(err_con, type = "message")
   tryCatch(
-    suppressWarnings(parade:::.parade_execute_chunk(
+    suppressWarnings(caravan:::.parade_execute_chunk(
       fl,
       idx_vec = list(c(1L, 2L), c(3L, 4L)),
       index_dir = index_dir,
@@ -465,7 +477,7 @@ test_that("within='callr' drains trailing child output on reap", {
   out_con <- file(out_file, open = "wt")
   sink(out_con, type = "output")
   tryCatch(
-    suppressWarnings(parade:::.parade_execute_chunk(
+    suppressWarnings(caravan:::.parade_execute_chunk(
       fl,
       idx_vec = list(1L),
       index_dir = index_dir,

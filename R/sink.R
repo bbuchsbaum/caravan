@@ -31,6 +31,7 @@ sink_spec <- function(fields, dir, template = NULL, format = "rds", formats = NU
                       sidecar = c("json","none"), compress = "gzip", autoload = TRUE) {
   stopifnot(is.character(fields), length(fields) >= 1L)
   overwrite <- match.arg(overwrite); sidecar <- match.arg(sidecar)
+  writer_atomic <- FALSE
   
   # Handle format specifications
   if (!is.null(formats)) {
@@ -58,6 +59,7 @@ sink_spec <- function(fields, dir, template = NULL, format = "rds", formats = NU
       if (!is.null(fmt)) {
         writer <- fmt$writer
         reader <- fmt$reader
+        writer_atomic <- isTRUE(fmt$atomic)
       } else if (format != "rds") {
         warning(sprintf("Unknown format '%s', using 'rds'", format))
         format <- "rds"
@@ -72,6 +74,7 @@ sink_spec <- function(fields, dir, template = NULL, format = "rds", formats = NU
   
   structure(list(fields=fields, dir=dir, template=template, format=format, 
                  formats=format_specs, writer=writer,
+                 writer_atomic = isTRUE(writer_atomic),
                  overwrite=overwrite, checksum=isTRUE(checksum), sidecar=sidecar, 
                  compress=compress,
                  reader=reader, autoload=isTRUE(autoload)), class = "parade_sink")
@@ -210,7 +213,12 @@ sink_spec <- function(fields, dir, template = NULL, format = "rds", formats = NU
     field_fmt <- spec$formats[[field]]
     if (is.character(field_fmt)) {
       fmt <- get_sink_format(field_fmt)
-      if (!is.null(fmt)) return(fmt$writer)
+      if (!is.null(fmt)) {
+        if (isTRUE(fmt$atomic)) {
+          return(function(x, path, ...) .write_atomic_generic(fmt$writer, x, path, ...))
+        }
+        return(fmt$writer)
+      }
     } else if (is.function(field_fmt)) {
       return(field_fmt)
     }
@@ -218,13 +226,21 @@ sink_spec <- function(fields, dir, template = NULL, format = "rds", formats = NU
   
   # Use spec's writer
   if (!is.null(spec$writer)) {
+    if (isTRUE(spec$writer_atomic)) {
+      return(function(x, path, ...) .write_atomic_generic(spec$writer, x, path, ...))
+    }
     return(spec$writer)
   }
   
   # Use format's writer
   if (is.character(spec$format)) {
     fmt <- get_sink_format(spec$format)
-    if (!is.null(fmt)) return(fmt$writer)
+    if (!is.null(fmt)) {
+      if (isTRUE(fmt$atomic)) {
+        return(function(x, path, ...) .write_atomic_generic(fmt$writer, x, path, ...))
+      }
+      return(fmt$writer)
+    }
   }
   
   # Default to RDS

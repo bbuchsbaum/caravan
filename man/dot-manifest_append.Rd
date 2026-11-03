@@ -12,7 +12,11 @@
 \item{record}{A list to serialize as one JSON line.}
 }
 \description{
-Writes a single JSON line in append mode. For lines under PIPE_BUF
-(4096 bytes) this is effectively atomic on POSIX systems.
+Atomically publish one completion record.
+}
+\details{
+Each record is written to a unique temporary file and renamed within its
+stage directory. This avoids shared append races and retains legacy JSONL
+files as read-only input for backwards compatibility.
 }
 \keyword{internal}

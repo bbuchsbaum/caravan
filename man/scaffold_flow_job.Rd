@@ -31,7 +31,7 @@ List of created script paths (invisibly)
 }
 \description{
 Creates a set of helper scripts for submitting, monitoring, and collecting
-results from a parade flow on SLURM systems.
+results from a caravan flow on SLURM systems.
 }
 \examples{
 \donttest{

@@ -7,7 +7,7 @@
 is_done(x)
 }
 \arguments{
-\item{x}{A parade job object (parade_job, parade_script_job, or parade_local_job)}
+\item{x}{A caravan job object (parade_job, parade_script_job, or parade_local_job)}
 }
 \value{
 Logical scalar; TRUE if the job has completed.

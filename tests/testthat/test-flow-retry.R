@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("stage-level retries recover transient failure", {
   env <- new.env(parent = emptyenv())

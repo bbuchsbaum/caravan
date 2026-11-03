@@ -20,5 +20,7 @@ A SHA1 fingerprint string.
 }
 \description{
 Fingerprints include stage definitions and the selected parameter grid.
-The hash changes when relevant stage code/specification or params change.
+They cannot capture all external dependencies, such as files, environment
+variables, databases, or every value accessed dynamically. A matching hash
+is not proof that two executions have the same inputs or results.
 }

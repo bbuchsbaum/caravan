@@ -11,7 +11,7 @@ profile_get(name)
 }
 \value{
 Resource profile object, or NULL if not found. User-configured
-profiles take precedence over parade's generic built-in profiles.
+profiles take precedence over caravan's generic built-in profiles.
 }
 \description{
 Get a registered resource profile

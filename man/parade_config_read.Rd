@@ -2,7 +2,7 @@
 % Please edit documentation in R/config.R
 \name{parade_config_read}
 \alias{parade_config_read}
-\title{Read parade configuration}
+\title{Read caravan configuration}
 \usage{
 parade_config_read(path = NULL)
 }
@@ -13,7 +13,7 @@ parade_config_read(path = NULL)
 List containing configuration settings
 }
 \description{
-Read parade configuration
+Read caravan configuration
 }
 \examples{
 config <- parade_config_read()

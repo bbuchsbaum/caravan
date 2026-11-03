@@ -15,7 +15,7 @@ manifest_clear(stage_id = NULL, config_dir = NULL)
 Invisibly returns the path(s) removed.
 }
 \description{
-Deletes the JSONL manifest file for a stage (or all stages).
+Deletes completion-manifest storage for a stage (or all stages).
 }
 \examples{
 \dontrun{

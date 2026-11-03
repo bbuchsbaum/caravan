@@ -18,7 +18,7 @@ Updated profile object
 Set time limit for a resource profile
 }
 \note{
-masks stats::time when parade is attached; use res_time() to avoid masking.
+masks stats::time when caravan is attached; use res_time() to avoid masking.
 }
 \examples{
 \donttest{

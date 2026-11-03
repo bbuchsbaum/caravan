@@ -18,7 +18,7 @@ A function suitable for use with \code{.name_by} parameter
 Creates a naming function that uses a hash of the input for unique job names.
 }
 \note{
-This function masks \code{digest::digest} when parade is attached. Prefer
+This function masks \code{digest::digest} when caravan is attached. Prefer
 \code{name_digest()} as an explicit alias to avoid confusion.
 }
 \examples{

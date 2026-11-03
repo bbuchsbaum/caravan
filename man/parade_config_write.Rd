@@ -2,7 +2,7 @@
 % Please edit documentation in R/config.R
 \name{parade_config_write}
 \alias{parade_config_write}
-\title{Write parade configuration}
+\title{Write caravan configuration}
 \usage{
 parade_config_write(cfg, path = NULL)
 }
@@ -15,7 +15,7 @@ parade_config_write(cfg, path = NULL)
 Path to written config file (invisibly)
 }
 \description{
-Write parade configuration
+Write caravan configuration
 }
 \examples{
 cfg <- list(slurm = list(defaults = list(time = "1h")))

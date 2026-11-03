@@ -2,7 +2,7 @@
 % Please edit documentation in R/flow.R
 \name{stage}
 \alias{stage}
-\title{Add a processing stage to a parade flow}
+\title{Add a processing stage to a caravan flow}
 \usage{
 stage(
   fl,
@@ -88,5 +88,5 @@ outputs, optional dependencies, and configurable data handling options.
 \examples{
 grid <- data.frame(x = 1:3)
 fl <- flow(grid) |>
-  stage("double", function(x) x * 2, schema = returns(result = dbl()))
+  stage("double", function(x) list(result = x * 2), schema = returns(result = dbl()))
 }

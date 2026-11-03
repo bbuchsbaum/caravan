@@ -14,6 +14,6 @@ skip_on_ci_without_slurm <- function() {
 }
 
 # Load the new parser functions if available
-if (file.exists(system.file("R", "slurm_parsers.R", package = "parade"))) {
-  source(system.file("R", "slurm_parsers.R", package = "parade"))
+if (file.exists(system.file("R", "slurm_parsers.R", package = "caravan"))) {
+  source(system.file("R", "slurm_parsers.R", package = "caravan"))
 }

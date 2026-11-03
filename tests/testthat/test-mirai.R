@@ -1,6 +1,5 @@
 # Test mirai integration
 library(testthat)
-devtools::load_all(".", quiet = TRUE)  # Load parade package from source
 
 test_that("dist_mirai creates correct structure", {
   skip_if_not_installed("mirai")

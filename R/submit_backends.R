@@ -86,9 +86,15 @@ list_submit_backends <- function() {
   if (!.crew_has_method(controller, "wait")) return(invisible(TRUE))
 
   fn <- get("wait", envir = controller, inherits = TRUE)
-  fmls <- names(formals(fn) %||% list())
-  if ("mode" %in% fmls && "seconds_timeout" %in% fmls && "seconds_interval" %in% fmls) {
-    fn(mode = mode, seconds_timeout = seconds_timeout, seconds_interval = seconds_interval)
+  fmls <- formals(fn) %||% list()
+  if (all(c("mode", "seconds_timeout", "seconds_interval") %in% names(fmls))) {
+    args <- list(mode = mode, seconds_timeout = seconds_timeout)
+    # Newer crew versions retain this argument with a NULL default, but
+    # deprecate passing it; older versions use it to control polling.
+    if (!identical(fmls$seconds_interval, NULL)) {
+      args$seconds_interval <- seconds_interval
+    }
+    do.call(fn, args)
   } else {
     fn()
   }
@@ -107,7 +113,7 @@ list_submit_backends <- function() {
   invisible(TRUE)
 }
 
-.crew_push <- function(controller, name, command, packages = "parade") {
+.crew_push <- function(controller, name, command, packages = "caravan") {
   fn <- get("push", envir = controller, inherits = TRUE)
   fmls <- names(formals(fn) %||% list())
 
@@ -172,7 +178,7 @@ list_submit_backends <- function() {
   for (idx in seq_along(chunk_ids)) {
     chunk_id <- chunk_ids[[idx]]
     cmd <- substitute(
-      parade::parade_run_chunk_local(
+      caravan::parade_run_chunk_local(
         i = i,
         flow_path = flow_path,
         chunks_path = chunks_path,
@@ -192,7 +198,7 @@ list_submit_backends <- function() {
       )
     )
 
-    .crew_push(controller, name = task_names[[idx]], command = cmd, packages = "parade")
+    .crew_push(controller, name = task_names[[idx]], command = cmd, packages = "caravan")
   }
 
   handle$jobs <- task_names
@@ -270,7 +276,8 @@ list_submit_backends <- function() {
     }
 
     remote_config <- if (is.function(dist$remote)) dist$remote() else dist$remote
-    mirai::daemons(url = url, remote = remote_config, dispatcher = dist$dispatcher)
+    mirai::daemons(n = dist$remote_n %||% 1L, url = url,
+                   remote = remote_config, dispatcher = dist$dispatcher)
     plan_fn <- future.mirai::mirai_cluster
   } else {
     stop("dist_mirai requires either 'n' for local or 'remote' for distributed execution", call. = FALSE)

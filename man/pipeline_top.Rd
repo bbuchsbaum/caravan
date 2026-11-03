@@ -38,13 +38,22 @@ pipeline execution.
 }
 \examples{
 \donttest{
+local({
+  old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+  on.exit(options(old_options), add = TRUE)
+  example_dir <- tempfile("parade-example-")
+  dir.create(example_dir)
+  on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+  paths_init(profile = "local", quiet = TRUE)
+  paths_set(registry = file.path(example_dir, "registry"),
+            artifacts = file.path(example_dir, "artifacts"))
 grid <- data.frame(x = 1:6, g = rep(1:3, 2))
 fl <- flow(grid) |>
   stage("s", function(x) list(y = x^2), schema = returns(y = dbl())) |>
   distribute(dist_local(by = "g", within = "sequential"))
 d <- submit(fl)
 pipeline_top(d = d, refresh = 1)
-unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-unlink("parade.log")
+deferred_await(d, timeout = 60)
+})
 }
 }

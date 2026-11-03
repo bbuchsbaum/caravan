@@ -556,8 +556,8 @@ test_that(".alias_join containment check tolerates Windows short paths", {
   }
 
   out <- normalizePath(file.path(root_short, "parade-paths-test"), mustWork = FALSE, winslash = "/")
-  expect_true(parade:::.path_contains(out, root))
-  expect_silent(parade:::.alias_join(root, "parade-paths-test", allow_escape = FALSE))
+  expect_true(caravan:::.path_contains(out, root))
+  expect_silent(caravan:::.alias_join(root, "parade-paths-test", allow_escape = FALSE))
 })
 
 test_that("resolve_path handles non-URI paths correctly", {

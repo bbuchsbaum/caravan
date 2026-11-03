@@ -112,7 +112,7 @@ dist_mirai <- function(
 #' }
 #' }
 use_mirai_local <- function(n = NULL, dispatcher = TRUE) {
-  n <- n %||% parallel::detectCores()
+  n <- n %||% .mirai_default_workers()
   dist_mirai(n = n, dispatcher = dispatcher)
 }
 
@@ -145,6 +145,10 @@ use_mirai_local <- function(n = NULL, dispatcher = TRUE) {
 use_mirai_slurm <- function(n, partition = NULL, time = NULL, 
                             mem = NULL, cpus = NULL, tls = TRUE, 
                             port = 5555, ...) {
+  if (!is.numeric(n) || length(n) != 1L || is.na(n) || !is.finite(n) ||
+      n < 1 || n != floor(n) || n > .Machine$integer.max) {
+    stop("`n` must be a positive integer.", call. = FALSE)
+  }
   # Build SLURM options string
   opts <- c()
   if (!is.null(partition)) opts <- c(opts, sprintf("#SBATCH --partition=%s", partition))
@@ -168,13 +172,15 @@ use_mirai_slurm <- function(n, partition = NULL, time = NULL,
   # Build URL configuration
   url_config <- if (tls) function() mirai::host_url(tls = TRUE, port = port) else NULL
   
-  dist_mirai(
+  dist <- dist_mirai(
     remote = remote_config,
     url = url_config,
     dispatcher = TRUE,
     tls = tls,
     port = port
   )
+  dist$remote_n <- as.integer(n)
+  dist
 }
 
 #' Use SSH-tunneled mirai daemons

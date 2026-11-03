@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("dist_crew rejects quoted expressions for controller", {
   expect_error(
@@ -18,7 +17,7 @@ test_that(".crew_wait passes args when supported", {
     invisible(TRUE)
   }
 
-  parade:::.crew_wait(ctl, mode = "all", seconds_timeout = 5, seconds_interval = 2)
+  caravan:::.crew_wait(ctl, mode = "all", seconds_timeout = 5, seconds_interval = 2)
   expect_equal(seen$args$mode, "all")
   expect_equal(seen$args$seconds_timeout, 5)
   expect_equal(seen$args$seconds_interval, 2)
@@ -34,12 +33,22 @@ test_that(".crew_wait falls back to no-args", {
     invisible(TRUE)
   }
 
-  parade:::.crew_wait(ctl, mode = "all", seconds_timeout = 5, seconds_interval = 2)
+  caravan:::.crew_wait(ctl, mode = "all", seconds_timeout = 5, seconds_interval = 2)
   expect_true(seen$called)
 })
 
 test_that("crew backend runs end-to-end when installed", {
   skip_if_not_installed("crew")
+
+  root <- withr::local_tempdir("caravan-crew-")
+  old_paths <- getOption("parade.paths")
+  on.exit(options(parade.paths = old_paths), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(
+    scratch = root,
+    artifacts = file.path(root, "artifacts"),
+    registry = file.path(root, "registry")
+  )
 
   grid <- tibble::tibble(x = 1:4, group = rep(c("a", "b"), each = 2))
   fl <- flow(grid) |>

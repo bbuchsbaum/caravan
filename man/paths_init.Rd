@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths.R
 \name{paths_init}
 \alias{paths_init}
-\title{Initialize parade path configuration}
+\title{Initialize caravan path configuration}
 \usage{
 paths_init(profile = c("auto", "local", "hpc"), create = FALSE, quiet = FALSE)
 }
@@ -18,7 +18,7 @@ paths_init(profile = c("auto", "local", "hpc"), create = FALSE, quiet = FALSE)
 Named list of configured paths (invisibly)
 }
 \description{
-Sets up standard directory paths for parade projects, automatically
+Sets up standard directory paths for caravan projects, automatically
 detecting HPC environments and configuring appropriate scratch and
 data directories.
 }
@@ -33,6 +33,10 @@ You can override defaults with environment variables such as \code{PARADE_SCRATC
 treated as unset.
 }
 \examples{
-paths_init(profile = "local")
-paths_init(quiet = TRUE)
+local({
+  old <- options(parade.paths = NULL)
+  on.exit(options(old), add = TRUE)
+  paths_init(profile = "local")
+  paths_init(quiet = TRUE)
+})
 }

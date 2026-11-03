@@ -1,6 +1,5 @@
 # Tests for R/event_store.R — Event Store
 
-devtools::load_all("/Users/bbuchsbaum/code/parade", quiet = TRUE)
 
 # --- Direct JSONL read/write tests (no mocking) ----------------------------
 
@@ -39,7 +38,7 @@ test_that("JSONL write and parse roundtrip works", {
 test_that("event_emit does nothing when option is FALSE", {
   withr::with_options(list(parade.event_store = FALSE), {
     # Should return NULL without side effects
-    result <- parade:::.event_emit("run1", "run_started", source = "test")
+    result <- caravan:::.event_emit("run1", "run_started", source = "test")
     expect_null(result)
   })
 })
@@ -48,7 +47,7 @@ test_that("event_emit never fails the caller", {
   # Even with a bad run_id that could cause path issues, should not error
   withr::with_options(list(parade.event_store = TRUE), {
     # This will try to write to a non-existent path, but tryCatch should eat it
-    expect_silent(parade:::.event_emit("x", "test"))
+    expect_silent(caravan:::.event_emit("x", "test"))
   })
 })
 
@@ -77,7 +76,7 @@ test_that("event_read filters by type from a file", {
 
 test_that("event_read returns empty list for missing file", {
   # .event_read checks file.exists internally
-  events <- parade:::.event_read("nonexistent_run_id_that_does_not_exist_12345")
+  events <- caravan:::.event_read("nonexistent_run_id_that_does_not_exist_12345")
   expect_equal(length(events), 0L)
 })
 
@@ -141,7 +140,7 @@ test_that("deferred runs emit stage lifecycle and heartbeat events with context"
   out <- deferred_collect(d)
 
   expect_true(is.data.frame(out))
-  events <- parade:::.event_read(d$run_id)
+  events <- caravan:::.event_read(d$run_id)
   types <- vapply(events, function(ev) ev$event_type %||% "", character(1))
 
   expect_true("chunk_started" %in% types)
@@ -189,7 +188,7 @@ test_that("script helpers emit events from PARADE environment context", {
   parade_log("checkpoint", stage = "load")
   parade_stage("load", state = "completed")
 
-  events <- parade:::.event_read("script-env-run")
+  events <- caravan:::.event_read("script-env-run")
   types <- vapply(events, function(ev) ev$event_type %||% "", character(1))
 
   expect_true("stage_started" %in% types)
@@ -213,15 +212,15 @@ test_that("script helpers emit events from PARADE environment context", {
 # --- .parse_slurm_exit_code (tested here for convenience) -------------------
 
 test_that("exit code parser works", {
-  p <- parade:::.parse_slurm_exit_code("0:9")
+  p <- caravan:::.parse_slurm_exit_code("0:9")
   expect_equal(p$exit, 0L)
   expect_equal(p$signal, 9L)
 
-  p2 <- parade:::.parse_slurm_exit_code("1:0")
+  p2 <- caravan:::.parse_slurm_exit_code("1:0")
   expect_equal(p2$exit, 1L)
   expect_equal(p2$signal, 0L)
 
-  p3 <- parade:::.parse_slurm_exit_code(NA)
+  p3 <- caravan:::.parse_slurm_exit_code(NA)
   expect_true(is.na(p3$exit))
   expect_true(is.na(p3$signal))
 })

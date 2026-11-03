@@ -2,7 +2,7 @@
 % Please edit documentation in R/flow.R
 \name{pipeline}
 \alias{pipeline}
-\title{Create a parade pipeline (alias for flow)}
+\title{Create a caravan pipeline (alias for flow)}
 \usage{
 pipeline(
   grid,
@@ -48,7 +48,7 @@ pipeline(
 A \code{parade_flow} object
 }
 \description{
-Create a parade pipeline (alias for flow)
+Create a caravan pipeline (alias for flow)
 }
 \examples{
 grid <- data.frame(a = 1:2)

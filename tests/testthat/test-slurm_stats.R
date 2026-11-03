@@ -4,7 +4,6 @@ skip_if_not_installed("mockery")
 library(mockery)
 
 # Load the package functions
-devtools::load_all(".", quiet = TRUE)
 
 # Helper: null-coalescing operator (from rlang) - in case not loaded
 if (!exists("%||%")) {
@@ -17,30 +16,30 @@ if (!exists("%||%")) {
 
 test_that(".slurm_cmd returns path for existing system command", {
   # Test with a command that definitely exists on all platforms
-  result <- parade:::.slurm_cmd("ls")
+  result <- caravan:::.slurm_cmd("ls")
   expect_true(nzchar(result) && !is.na(result))
 })
 
 test_that(".slurm_cmd returns NA when command doesn't exist", {
-  result <- parade:::.slurm_cmd("this_command_does_not_exist_xyz")
+  result <- caravan:::.slurm_cmd("this_command_does_not_exist_xyz")
   expect_true(is.na(result))
 })
 
 test_that(".run_cmd returns empty character when command not found", {
-  result <- parade:::.run_cmd("this_command_does_not_exist_xyz", c("--help"))
+  result <- caravan:::.run_cmd("this_command_does_not_exist_xyz", c("--help"))
   expect_equal(length(result), 0)
   expect_equal(attr(result, "status"), 127L)
 })
 
 test_that(".run_cmd executes real command and returns output", {
-  result <- parade:::.run_cmd("echo", c("hello"))
+  result <- caravan:::.run_cmd("echo", c("hello"))
   expect_true(length(result) > 0)
   expect_match(result[[1]], "hello")
   expect_equal(attr(result, "status") %||% 0L, 0L)
 })
 
 test_that(".run_cmd returns output with status attribute", {
-  result <- parade:::.run_cmd("echo", c("test"))
+  result <- caravan:::.run_cmd("echo", c("test"))
   expect_true(!is.null(result))
   status <- attr(result, "status") %||% 0L
   expect_true(is.numeric(status))
@@ -51,45 +50,45 @@ test_that(".run_cmd returns output with status attribute", {
 # ===========================================================================
 
 test_that(".parade_parse_hms parses D-HH:MM:SS format correctly", {
-  expect_equal(parade:::.parade_parse_hms("1-23:45:56"), 1*86400 + 23*3600 + 45*60 + 56)
-  expect_equal(parade:::.parade_parse_hms("0-00:00:01"), 1)
-  expect_equal(parade:::.parade_parse_hms("10-12:30:45"), 10*86400 + 12*3600 + 30*60 + 45)
-  expect_equal(parade:::.parade_parse_hms("2-00:00:00"), 2*86400)
+  expect_equal(caravan:::.parade_parse_hms("1-23:45:56"), 1*86400 + 23*3600 + 45*60 + 56)
+  expect_equal(caravan:::.parade_parse_hms("0-00:00:01"), 1)
+  expect_equal(caravan:::.parade_parse_hms("10-12:30:45"), 10*86400 + 12*3600 + 30*60 + 45)
+  expect_equal(caravan:::.parade_parse_hms("2-00:00:00"), 2*86400)
 })
 
 test_that(".parade_parse_hms parses HH:MM:SS format correctly", {
-  expect_equal(parade:::.parade_parse_hms("00:00:01"), 1)
-  expect_equal(parade:::.parade_parse_hms("01:00:00"), 3600)
-  expect_equal(parade:::.parade_parse_hms("23:59:59"), 23*3600 + 59*60 + 59)
-  expect_equal(parade:::.parade_parse_hms("12:34:56"), 12*3600 + 34*60 + 56)
-  expect_equal(parade:::.parade_parse_hms("1:02:03"), 1*3600 + 2*60 + 3)
+  expect_equal(caravan:::.parade_parse_hms("00:00:01"), 1)
+  expect_equal(caravan:::.parade_parse_hms("01:00:00"), 3600)
+  expect_equal(caravan:::.parade_parse_hms("23:59:59"), 23*3600 + 59*60 + 59)
+  expect_equal(caravan:::.parade_parse_hms("12:34:56"), 12*3600 + 34*60 + 56)
+  expect_equal(caravan:::.parade_parse_hms("1:02:03"), 1*3600 + 2*60 + 3)
 })
 
 test_that(".parade_parse_hms parses MM:SS format correctly", {
-  expect_equal(parade:::.parade_parse_hms("00:01"), 1)
-  expect_equal(parade:::.parade_parse_hms("59:59"), 59*60 + 59)
-  expect_equal(parade:::.parade_parse_hms("30:45"), 30*60 + 45)
-  expect_equal(parade:::.parade_parse_hms("1:05"), 1*60 + 5)
+  expect_equal(caravan:::.parade_parse_hms("00:01"), 1)
+  expect_equal(caravan:::.parade_parse_hms("59:59"), 59*60 + 59)
+  expect_equal(caravan:::.parade_parse_hms("30:45"), 30*60 + 45)
+  expect_equal(caravan:::.parade_parse_hms("1:05"), 1*60 + 5)
 })
 
 test_that(".parade_parse_hms handles numeric strings", {
-  expect_equal(parade:::.parade_parse_hms("3600"), 3600)
-  expect_equal(parade:::.parade_parse_hms("123.45"), 123.45)
-  expect_equal(parade:::.parade_parse_hms("0"), 0)
+  expect_equal(caravan:::.parade_parse_hms("3600"), 3600)
+  expect_equal(caravan:::.parade_parse_hms("123.45"), 123.45)
+  expect_equal(caravan:::.parade_parse_hms("0"), 0)
 })
 
 test_that(".parade_parse_hms handles invalid inputs", {
-  expect_true(is.na(parade:::.parade_parse_hms(NA)))
-  expect_true(is.na(parade:::.parade_parse_hms("")))
-  expect_true(is.na(parade:::.parade_parse_hms("invalid")))
-  expect_true(is.na(parade:::.parade_parse_hms("1:2:3:4:5")))
-  expect_true(is.na(parade:::.parade_parse_hms("abc:def:ghi")))
+  expect_true(is.na(caravan:::.parade_parse_hms(NA)))
+  expect_true(is.na(caravan:::.parade_parse_hms("")))
+  expect_true(is.na(caravan:::.parade_parse_hms("invalid")))
+  expect_true(is.na(caravan:::.parade_parse_hms("1:2:3:4:5")))
+  expect_true(is.na(caravan:::.parade_parse_hms("abc:def:ghi")))
 })
 
 test_that(".parade_parse_hms handles whitespace", {
-  expect_equal(parade:::.parade_parse_hms("  12:34:56  "), 12*3600 + 34*60 + 56)
-  expect_equal(parade:::.parade_parse_hms("\t1-00:00:00\n"), 86400)
-  expect_equal(parade:::.parade_parse_hms(" 30:45 "), 30*60 + 45)
+  expect_equal(caravan:::.parade_parse_hms("  12:34:56  "), 12*3600 + 34*60 + 56)
+  expect_equal(caravan:::.parade_parse_hms("\t1-00:00:00\n"), 86400)
+  expect_equal(caravan:::.parade_parse_hms(" 30:45 "), 30*60 + 45)
 })
 
 # ===========================================================================
@@ -97,21 +96,21 @@ test_that(".parade_parse_hms handles whitespace", {
 # ===========================================================================
 
 test_that(".parade_fmt_bytes formats bytes correctly", {
-  expect_equal(parade:::.parade_fmt_bytes(0), "0B")
-  expect_equal(parade:::.parade_fmt_bytes(512), "512B")
-  expect_equal(parade:::.parade_fmt_bytes(1023), "1023B")
-  expect_equal(parade:::.parade_fmt_bytes(1024), "1.0K")
-  expect_equal(parade:::.parade_fmt_bytes(1536), "1.5K")
-  expect_equal(parade:::.parade_fmt_bytes(1024*1024), "1.0M")
-  expect_equal(parade:::.parade_fmt_bytes(1024*1024*1.5), "1.5M")
-  expect_equal(parade:::.parade_fmt_bytes(1024^3), "1.0G")
-  expect_equal(parade:::.parade_fmt_bytes(1024^4), "1.0T")
-  expect_equal(parade:::.parade_fmt_bytes(1024^5), "1.0P")
-  expect_equal(parade:::.parade_fmt_bytes(1024^6), "1024.0P")  # Max unit is P
+  expect_equal(caravan:::.parade_fmt_bytes(0), "0B")
+  expect_equal(caravan:::.parade_fmt_bytes(512), "512B")
+  expect_equal(caravan:::.parade_fmt_bytes(1023), "1023B")
+  expect_equal(caravan:::.parade_fmt_bytes(1024), "1.0K")
+  expect_equal(caravan:::.parade_fmt_bytes(1536), "1.5K")
+  expect_equal(caravan:::.parade_fmt_bytes(1024*1024), "1.0M")
+  expect_equal(caravan:::.parade_fmt_bytes(1024*1024*1.5), "1.5M")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^3), "1.0G")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^4), "1.0T")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^5), "1.0P")
+  expect_equal(caravan:::.parade_fmt_bytes(1024^6), "1024.0P")  # Max unit is P
 })
 
 test_that(".parade_fmt_bytes handles NA", {
-  expect_equal(parade:::.parade_fmt_bytes(NA), "NA")
+  expect_equal(caravan:::.parade_fmt_bytes(NA), "NA")
 })
 
 # ===========================================================================
@@ -119,68 +118,68 @@ test_that(".parade_fmt_bytes handles NA", {
 # ===========================================================================
 
 test_that(".parade_parse_mem parses memory with K suffix", {
-  expect_equal(parade:::.parade_parse_mem("1K"), 1024)
-  expect_equal(parade:::.parade_parse_mem("1.5K"), 1.5 * 1024)
-  expect_equal(parade:::.parade_parse_mem("1024K"), 1024 * 1024)
-  expect_equal(parade:::.parade_parse_mem("0.5K"), 0.5 * 1024)
+  expect_equal(caravan:::.parade_parse_mem("1K"), 1024)
+  expect_equal(caravan:::.parade_parse_mem("1.5K"), 1.5 * 1024)
+  expect_equal(caravan:::.parade_parse_mem("1024K"), 1024 * 1024)
+  expect_equal(caravan:::.parade_parse_mem("0.5K"), 0.5 * 1024)
 })
 
 test_that(".parade_parse_mem parses memory with M suffix", {
-  expect_equal(parade:::.parade_parse_mem("1M"), 1024^2)
-  expect_equal(parade:::.parade_parse_mem("2.5M"), 2.5 * 1024^2)
-  expect_equal(parade:::.parade_parse_mem("100M"), 100 * 1024^2)
-  expect_equal(parade:::.parade_parse_mem("0.25M"), 0.25 * 1024^2)
+  expect_equal(caravan:::.parade_parse_mem("1M"), 1024^2)
+  expect_equal(caravan:::.parade_parse_mem("2.5M"), 2.5 * 1024^2)
+  expect_equal(caravan:::.parade_parse_mem("100M"), 100 * 1024^2)
+  expect_equal(caravan:::.parade_parse_mem("0.25M"), 0.25 * 1024^2)
 })
 
 test_that(".parade_parse_mem parses memory with G suffix", {
-  expect_equal(parade:::.parade_parse_mem("1G"), 1024^3)
-  expect_equal(parade:::.parade_parse_mem("1.5G"), 1.5 * 1024^3)
-  expect_equal(parade:::.parade_parse_mem("10G"), 10 * 1024^3)
-  expect_equal(parade:::.parade_parse_mem("0.1G"), 0.1 * 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("1G"), 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("1.5G"), 1.5 * 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("10G"), 10 * 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("0.1G"), 0.1 * 1024^3)
 })
 
 test_that(".parade_parse_mem parses memory with T and P suffixes", {
-  expect_equal(parade:::.parade_parse_mem("1T"), 1024^4)
-  expect_equal(parade:::.parade_parse_mem("2.5T"), 2.5 * 1024^4)
-  expect_equal(parade:::.parade_parse_mem("1P"), 1024^5)
-  expect_equal(parade:::.parade_parse_mem("0.5P"), 0.5 * 1024^5)
+  expect_equal(caravan:::.parade_parse_mem("1T"), 1024^4)
+  expect_equal(caravan:::.parade_parse_mem("2.5T"), 2.5 * 1024^4)
+  expect_equal(caravan:::.parade_parse_mem("1P"), 1024^5)
+  expect_equal(caravan:::.parade_parse_mem("0.5P"), 0.5 * 1024^5)
 })
 
 test_that(".parade_parse_mem handles no suffix as bytes", {
-  expect_equal(parade:::.parade_parse_mem("1024"), 1024)
-  expect_equal(parade:::.parade_parse_mem("512.5"), 512.5)
-  expect_equal(parade:::.parade_parse_mem("0"), 0)
+  expect_equal(caravan:::.parade_parse_mem("1024"), 1024)
+  expect_equal(caravan:::.parade_parse_mem("512.5"), 512.5)
+  expect_equal(caravan:::.parade_parse_mem("0"), 0)
 })
 
 test_that(".parade_parse_mem is case insensitive", {
-  expect_equal(parade:::.parade_parse_mem("1k"), 1024)
-  expect_equal(parade:::.parade_parse_mem("2m"), 2 * 1024^2)
-  expect_equal(parade:::.parade_parse_mem("3g"), 3 * 1024^3)
-  expect_equal(parade:::.parade_parse_mem("4t"), 4 * 1024^4)
-  expect_equal(parade:::.parade_parse_mem("5p"), 5 * 1024^5)
+  expect_equal(caravan:::.parade_parse_mem("1k"), 1024)
+  expect_equal(caravan:::.parade_parse_mem("2m"), 2 * 1024^2)
+  expect_equal(caravan:::.parade_parse_mem("3g"), 3 * 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("4t"), 4 * 1024^4)
+  expect_equal(caravan:::.parade_parse_mem("5p"), 5 * 1024^5)
 })
 
 test_that(".parade_parse_mem handles NA values", {
-  expect_true(is.na(parade:::.parade_parse_mem(NA)))
-  expect_true(is.na(parade:::.parade_parse_mem("")))
-  expect_true(is.na(parade:::.parade_parse_mem("N/A")))
-  expect_true(is.na(parade:::.parade_parse_mem("n/a")))
-  expect_true(is.na(parade:::.parade_parse_mem("NA")))
-  expect_true(is.na(parade:::.parade_parse_mem("NONE")))
-  expect_true(is.na(parade:::.parade_parse_mem("none")))
+  expect_true(is.na(caravan:::.parade_parse_mem(NA)))
+  expect_true(is.na(caravan:::.parade_parse_mem("")))
+  expect_true(is.na(caravan:::.parade_parse_mem("N/A")))
+  expect_true(is.na(caravan:::.parade_parse_mem("n/a")))
+  expect_true(is.na(caravan:::.parade_parse_mem("NA")))
+  expect_true(is.na(caravan:::.parade_parse_mem("NONE")))
+  expect_true(is.na(caravan:::.parade_parse_mem("none")))
 })
 
 test_that(".parade_parse_mem handles whitespace", {
-  expect_equal(parade:::.parade_parse_mem("  1G  "), 1024^3)
-  expect_equal(parade:::.parade_parse_mem("\t512M\n"), 512 * 1024^2)
-  expect_equal(parade:::.parade_parse_mem(" 100K "), 100 * 1024)
+  expect_equal(caravan:::.parade_parse_mem("  1G  "), 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("\t512M\n"), 512 * 1024^2)
+  expect_equal(caravan:::.parade_parse_mem(" 100K "), 100 * 1024)
 })
 
 test_that(".parade_parse_mem handles invalid inputs", {
-  expect_true(is.na(parade:::.parade_parse_mem("invalid")))
+  expect_true(is.na(caravan:::.parade_parse_mem("invalid")))
   # "1X" is parsed as 1 (numeric part) since X is not a valid unit
-  expect_equal(parade:::.parade_parse_mem("1X"), 1)
-  expect_true(is.na(parade:::.parade_parse_mem("abc")))
+  expect_equal(caravan:::.parade_parse_mem("1X"), 1)
+  expect_true(is.na(caravan:::.parade_parse_mem("abc")))
 })
 
 # ===========================================================================
@@ -190,7 +189,7 @@ test_that(".parade_parse_mem handles invalid inputs", {
 test_that(".slurm_squeue_info parses squeue output correctly", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_squeue_info("12345")
+      result <- caravan:::.slurm_squeue_info("12345")
       expect_equal(result$state, "RUNNING")
       expect_equal(result$time, 5*60 + 30)  # 5 minutes 30 seconds
       expect_equal(result$timelimit, 3600)  # 1 hour
@@ -200,14 +199,14 @@ test_that(".slurm_squeue_info parses squeue output correctly", {
       expect_equal(result$nodelist, "node001")
     },
     .run_cmd = function(...) "RUNNING|00:05:30|01:00:00|4|1|None|node001",
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_squeue_info returns UNKNOWN state when job not found", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_squeue_info("99999")
+      result <- caravan:::.slurm_squeue_info("99999")
       expect_equal(result$state, "UNKNOWN")
       expect_true(is.na(result$time))
       expect_true(is.na(result$timelimit))
@@ -217,14 +216,14 @@ test_that(".slurm_squeue_info returns UNKNOWN state when job not found", {
       expect_true(is.na(result$nodelist))
     },
     .run_cmd = function(...) character(0),
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_squeue_info handles PENDING state", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_squeue_info("12346")
+      result <- caravan:::.slurm_squeue_info("12346")
       expect_equal(result$state, "PENDING")
       expect_equal(result$time, 0)
       expect_equal(result$timelimit, 2*3600)
@@ -234,19 +233,19 @@ test_that(".slurm_squeue_info handles PENDING state", {
       expect_equal(result$nodelist, "")
     },
     .run_cmd = function(...) "PENDING|00:00:00|02:00:00|8|2|Resources||",
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_squeue_info handles day format in time", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_squeue_info("12347")
+      result <- caravan:::.slurm_squeue_info("12347")
       expect_equal(result$time, 1*86400 + 12*3600 + 30*60 + 45)
       expect_equal(result$timelimit, 7*86400)
     },
     .run_cmd = function(...) "RUNNING|1-12:30:45|7-00:00:00|16|4|None|node[001-004]",
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
@@ -257,7 +256,7 @@ test_that(".slurm_squeue_info handles day format in time", {
 test_that(".slurm_sacct_info parses sacct output correctly", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sacct_info("12345")
+      result <- caravan:::.slurm_sacct_info("12345")
       expect_equal(result$JobID, "12345")
       expect_equal(result$State, "COMPLETED")
       expect_equal(result$ElapsedRaw, 3600)
@@ -268,38 +267,38 @@ test_that(".slurm_sacct_info parses sacct output correctly", {
       expect_equal(result$MaxVMSize, 1024 * 1024^2)  # 1024M in bytes
     },
     .run_cmd = function(...) "12345|COMPLETED|3600|01:30:00|4|2G|512M|1024M|",
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_sacct_info returns NULL when job not found", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sacct_info("99999")
+      result <- caravan:::.slurm_sacct_info("99999")
       expect_null(result)
     },
     .run_cmd = function(...) character(0),
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_sacct_info handles batch job suffix", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sacct_info("12345")
+      result <- caravan:::.slurm_sacct_info("12345")
       expect_equal(result$JobID, "12345.batch")  # Should prefer .batch version
       expect_equal(result$State, "COMPLETED")
     },
     .run_cmd = function(...) c("12345.batch|COMPLETED|1800|00:25:00|2|1G|256M|512M|",
                               "12345|COMPLETED|1800|00:25:00|2|1G|256M|512M|"),
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_sacct_info handles memory values with NA", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sacct_info("12345")
+      result <- caravan:::.slurm_sacct_info("12345")
       expect_equal(result$JobID, "12345")
       expect_equal(result$State, "RUNNING")
       expect_equal(result$ElapsedRaw, 600)
@@ -307,7 +306,7 @@ test_that(".slurm_sacct_info handles memory values with NA", {
       expect_true(is.na(result$MaxVMSize))
     },
     .run_cmd = function(...) "12345|RUNNING|600|00:05:00|4|2G|N/A|N/A|",
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
@@ -318,7 +317,7 @@ test_that(".slurm_sacct_info handles memory values with NA", {
 test_that(".slurm_sstat_info parses sstat output correctly", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sstat_info("12345")
+      result <- caravan:::.slurm_sstat_info("12345")
   expect_equal(result$JobID, "12345.batch")
   expect_equal(result$State, "RUNNING")
   expect_equal(result$CPUUtilized, 15*60 + 30)  # 15 minutes 30 seconds
@@ -332,18 +331,18 @@ test_that(".slurm_sstat_info parses sstat output correctly", {
   expect_equal(result$Tasks, 1)
     },
     .run_cmd = function(...) "12345.batch|RUNNING|00:15:30|00:20:00|128M|256M|512M|1024M|node001|node001|1",
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
 test_that(".slurm_sstat_info returns NULL when job not found", {
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sstat_info("99999")
+      result <- caravan:::.slurm_sstat_info("99999")
       expect_null(result)
     },
     .run_cmd = function(...) character(0),
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
@@ -352,7 +351,7 @@ test_that(".slurm_sstat_info tries .batch suffix first, then job ID", {
   call_count <- 0
   with_mocked_bindings(
     {
-      result <- parade:::.slurm_sstat_info("12345")
+      result <- caravan:::.slurm_sstat_info("12345")
       expect_equal(result$JobID, "12345")
       expect_equal(result$State, "RUNNING")
       expect_equal(result$Tasks, 2)
@@ -365,7 +364,7 @@ test_that(".slurm_sstat_info tries .batch suffix first, then job ID", {
         "12345|RUNNING|00:10:00|00:15:00|64M|128M|256M|512M|node002|node002|2"
       }
     },
-    .package = "parade"
+    .package = "caravan"
   )
 })
 
@@ -377,6 +376,7 @@ test_that("script_metrics combines data from all sources", {
   # Create a mock job object
   mock_job <- list(
     job_id = "12345",
+    batch_id = "12345",
     name = "test_job",
     resources = list(
       cpus_per_task = 4,
@@ -422,6 +422,7 @@ test_that("script_metrics combines data from all sources", {
 test_that("script_metrics handles completed job with sacct data", {
   mock_job <- list(
     job_id = "12346",
+    batch_id = "12346",
     name = "completed_job",
     resources = list(
       cpus_per_task = 8,
@@ -629,7 +630,7 @@ test_that("script_done returns TRUE when job is done", {
   
   # Mock the batchtools functions
   stub(script_done, "requireNamespace", function(...) TRUE)
-  stub(script_done, "batchtools::loadRegistry", function(...) list(file.dir = tempdir()))
+  stub(script_done, "bt_load_registry", function(...) list(file.dir = tempdir()))
   stub(script_done, "batchtools::getStatus", function(...) list(done = 1, error = 0))
   
   result <- script_done(mock_job)
@@ -643,7 +644,7 @@ test_that("script_done returns TRUE when job has error", {
   class(mock_job) <- "parade_script_job"
   
   stub(script_done, "requireNamespace", function(...) TRUE)
-  stub(script_done, "batchtools::loadRegistry", function(...) list(file.dir = tempdir()))
+  stub(script_done, "bt_load_registry", function(...) list(file.dir = tempdir()))
   stub(script_done, "batchtools::getStatus", function(...) list(done = 0, error = 1))
   
   result <- script_done(mock_job)
@@ -657,7 +658,7 @@ test_that("script_done returns FALSE when job is still running", {
   class(mock_job) <- "parade_script_job"
   
   stub(script_done, "requireNamespace", function(...) TRUE)
-  stub(script_done, "batchtools::loadRegistry", function(...) list(file.dir = tempdir()))
+  stub(script_done, "bt_load_registry", function(...) list(file.dir = tempdir()))
   stub(script_done, "batchtools::getStatus", function(...) list(done = 0, error = 0))
   
   result <- script_done(mock_job)
@@ -670,22 +671,23 @@ test_that("script_done returns FALSE when job is still running", {
 
 test_that("parsing functions handle extreme values", {
   # Very large time values
-  expect_equal(parade:::.parade_parse_hms("999-23:59:59"), 999*86400 + 23*3600 + 59*60 + 59)
+  expect_equal(caravan:::.parade_parse_hms("999-23:59:59"), 999*86400 + 23*3600 + 59*60 + 59)
   
   # Very large memory values
-  expect_equal(parade:::.parade_parse_mem("999999P"), 999999 * 1024^5)
+  expect_equal(caravan:::.parade_parse_mem("999999P"), 999999 * 1024^5)
   
   # Zero values
-  expect_equal(parade:::.parade_parse_hms("0:00:00"), 0)
-  expect_equal(parade:::.parade_parse_mem("0K"), 0)
+  expect_equal(caravan:::.parade_parse_hms("0:00:00"), 0)
+  expect_equal(caravan:::.parade_parse_mem("0K"), 0)
   
   # Decimal precision
-  expect_equal(parade:::.parade_parse_mem("1.234567890G"), 1.234567890 * 1024^3)
+  expect_equal(caravan:::.parade_parse_mem("1.234567890G"), 1.234567890 * 1024^3)
 })
 
 test_that("script_metrics handles missing SLURM commands gracefully", {
   mock_job <- list(
     job_id = "12345",
+    batch_id = "12345",
     name = "test_job",
     resources = list(cpus_per_task = 4, mem = "8G"),
     registry_dir = tempdir()

@@ -188,7 +188,7 @@ script_stage_expand_paths <- function(row, produces, output_dir = NULL) {
 
 # script_stage -------------------------------------------------------------
 
-#' Add a script-based stage to a parade flow
+#' Add a script-based stage to a caravan flow
 #'
 #' Wraps an external script as a first-class pipeline stage with declarative
 #' output file templates and automatic parameter wiring. The script is expected
@@ -262,6 +262,9 @@ script_stage_expand_paths <- function(row, produces, output_dir = NULL) {
 #'   after each successful execution. On subsequent runs the manifest is
 #'   consulted first, which allows skipping even when the `produces` template
 #'   has changed (e.g., after adding a new grid parameter).
+#'   The existence check does not verify script changes, external input files,
+#'   or output contents. Callers must invalidate or version cached results when
+#'   those dependencies change.
 #'   See [completion_manifest()], [manifest_adopt()], [manifest_clear()].
 #' @param ... Additional constant arguments passed through to the stage.
 #'
@@ -427,8 +430,10 @@ script_stage <- function(fl, id, script, produces,
     manifest_path <- NULL
     if (!.template_mode) {
       manifest_path <- tempfile("parade_manifest_", fileext = ".json")
+      old_manifest <- Sys.getenv("PARADE_MANIFEST", unset = NA_character_)
       on.exit({
-        Sys.unsetenv("PARADE_MANIFEST")
+        if (is.na(old_manifest)) Sys.unsetenv("PARADE_MANIFEST")
+        else Sys.setenv(PARADE_MANIFEST = old_manifest)
         unlink(manifest_path, force = TRUE)
       }, add = TRUE)
       Sys.setenv(PARADE_MANIFEST = manifest_path)
@@ -563,7 +568,7 @@ script_stage <- function(fl, id, script, produces,
         cli_args <- c(cli_args, paste0("--output_path=", unname(paths[1L])))
       }
 
-      ret <- system2(.interp, c(.script, cli_args))
+      ret <- system2(.interp, .parade_system2_args(c(.script, cli_args)))
       if (ret != 0L) {
         stop(sprintf("Script '%s' exited with status %d", .script, ret), call. = FALSE)
       }
@@ -750,7 +755,7 @@ script_stage <- function(fl, id, script, produces,
 
   status <- system2(
     command = file.path(R.home("bin"), "Rscript"),
-    args = c("--vanilla", runner_path, env_path, refs_path, script_path),
+    args = .parade_system2_args(c("--vanilla", runner_path, env_path, refs_path, script_path)),
     stdout = "",
     stderr = stderr_path,
     wait = TRUE

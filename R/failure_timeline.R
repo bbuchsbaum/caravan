@@ -13,15 +13,23 @@
 #' @export
 #' @examples
 #' \donttest{
+#' local({
+#'   old_options <- options(parade.paths = NULL, parade.log_path = NULL)
+#'   on.exit(options(old_options), add = TRUE)
+#'   example_dir <- tempfile("parade-example-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(profile = "local", quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"),
+#'             artifacts = file.path(example_dir, "artifacts"))
 #' grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))
 #' fl <- flow(grid) |>
-#'   stage("calc", function(x) x^2, schema = returns(result = dbl())) |>
+#'   stage("calc", function(x) list(result = x^2), schema = returns(result = dbl())) |>
 #'   distribute(dist_local(by = "group", within = "sequential"))
 #' d <- submit(fl)
 #' deferred_await(d, timeout = 60)
 #' tl <- failure_timeline(d)
-#' unlink(c(paths_get()$registry, paths_get()$artifacts), recursive = TRUE)
-#' unlink("parade.log")
+#' })
 #' }
 failure_timeline <- function(x, around_failure = 60, ...) {
   UseMethod("failure_timeline")
@@ -203,6 +211,12 @@ failure_timeline.data.frame <- function(x, around_failure = 60, ...) {
 
   events <- list()
   failed_rows <- which(!x$.ok)
+  run_start <- attr(x, "parade_run_meta", exact = TRUE)$started_at %||% NULL
+  parse_time <- function(value) {
+    if (is.null(value) || length(value) != 1L || is.na(value)) return(as.POSIXct(NA))
+    suppressWarnings(as.POSIXct(value, format = "%Y-%m-%dT%H:%M:%OS%z", tz = "UTC"))
+  }
+  start_time <- parse_time(run_start)
 
   for (ri in failed_rows) {
     diag <- x$.diag[[ri]]
@@ -212,12 +226,14 @@ failure_timeline.data.frame <- function(x, around_failure = 60, ...) {
       dd <- diag[[stage_id]]
       if (isTRUE(dd$ok) || isTRUE(dd$skipped)) next
 
-      ts <- tryCatch(as.POSIXct(dd$ended_at %||% dd$started_at), error = function(e) NULL)
-      offset <- if (!is.null(ts)) as.numeric(ts) else NA_real_
+      ts <- parse_time(dd$ended_at %||% dd$started_at)
+      offset <- if (!is.na(ts) && !is.na(start_time)) {
+        as.numeric(difftime(ts, start_time, units = "secs"))
+      } else NA_real_
       cl <- .classify_failure(diag = dd, slurm_meta = NULL, source = "index")
 
       events[[length(events) + 1L]] <- list(
-        offset = dd$duration_ms %||% NA_real_,
+        offset = offset,
         event = sprintf("[FAIL] row %d, stage '%s': %s",
                         ri, stage_id,
                         substr(dd$error_message %||% "unknown", 1, 60)),
@@ -230,6 +246,8 @@ failure_timeline.data.frame <- function(x, around_failure = 60, ...) {
   }
 
   if (length(events) == 0L) return(.empty_timeline_tbl())
+
+  events <- events[order(vapply(events, function(e) e$offset, numeric(1)), na.last = TRUE)]
 
   tibble::tibble(
     offset     = vapply(events, function(e) e$offset %||% NA_real_, numeric(1)),

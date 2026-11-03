@@ -6,15 +6,15 @@
 # so this stays immune to shell/Rscript quoting issues.
 
 suppressMessages({
-  if (!requireNamespace("parade", quietly = TRUE)) {
+  if (!requireNamespace("caravan", quietly = TRUE)) {
     # devtools::load_all fallback — parent passes its source tree via
     # PARADE_PKG_ROOT so the worker can find the unbundled package.
     pkg_root <- Sys.getenv("PARADE_PKG_ROOT", unset = "")
     if (nzchar(pkg_root) && requireNamespace("pkgload", quietly = TRUE)) {
       pkgload::load_all(pkg_root, quiet = TRUE)
     } else {
-      stop("parade package not available in Rscript subprocess; ",
-           "install parade or set PARADE_PKG_ROOT to the source directory",
+      stop("caravan package not available in Rscript subprocess; ",
+           "install caravan or set PARADE_PKG_ROOT to the source directory",
            call. = FALSE)
     }
   }
@@ -25,7 +25,7 @@ if (length(args) < 1L) stop("parade_run_row.R: missing row_id argument", call. =
 row_id <- suppressWarnings(as.integer(args[[1]]))
 if (is.na(row_id)) stop("parade_run_row.R: row_id must be an integer", call. = FALSE)
 
-parade::parade_run_row(
+caravan::parade_run_row(
   flow_path   = Sys.getenv("PARADE_FLOW_PATH",   unset = NA_character_),
   chunks_path = Sys.getenv("PARADE_CHUNKS_PATH", unset = NA_character_),
   chunk_id    = as.integer(Sys.getenv("PARADE_CHUNK_ID", unset = "1")),

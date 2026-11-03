@@ -4,8 +4,8 @@
 #'
 #' Configure distributed execution using the `crew` ecosystem.
 #'
-#' This backend schedules parade chunks on a crew controller (local or cluster),
-#' while keeping parade's chunk execution semantics intact.
+#' This backend schedules caravan chunks on a crew controller (local or cluster),
+#' while keeping caravan's chunk execution semantics intact.
 #'
 #' @param controller A crew controller object, or a function with no arguments
 #'   that returns one. If `NULL`, a local controller is used when available.

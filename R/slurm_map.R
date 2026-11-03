@@ -117,7 +117,7 @@
 #'
 #' In standard mode, a user profile declaring `whole_node = TRUE` (or requesting
 #' at least its declared `cores_per_node`) triggers a warning when more than one
-#' job will be submitted. This is advisory: parade preserves the existing
+#' job will be submitted. This is advisory: caravan preserves the existing
 #' one-element-per-job behavior. Supplying `.workers_per_node` without packed
 #' mode also warns because that argument would otherwise have no effect.
 #'
@@ -717,7 +717,7 @@ slurm_map_packed <- function(.x, .f, ...,
       chunk_name = chunk_name,
       capture_child_io = isTRUE(.capture_child_io),
       name = chunk_name,
-      packages = unique(c(.packages, "parade",
+      packages = unique(c(.packages, "caravan",
                           if (.parallel_backend %in% c("multicore","multisession","auto")) c("future","future.apply") else character())),
       resources = resources,
       write_result = chunk_result_path,
@@ -725,6 +725,7 @@ slurm_map_packed <- function(.x, .f, ...,
       .error_policy = .error_policy
     )
     job$.__chunk_idx__ <- chunk_idx
+    job$.__chunk_indices__ <- indices
     job$.__is_packed__ <- TRUE
     job$.__chunk_name__ <- chunk_name
     job$.__chunk_log_dir__ <- chunk_log_dir
@@ -779,7 +780,7 @@ packed_worker_function <- function(chunk_elements,
                                    name_by = "auto",
                                    write_result_template = NULL,
                                    workers = 1L,
-                                   parallel_backend = c("callr","auto","multicore","multisession"),
+                                   parallel_backend = c("callr", "auto", "multicore", "multisession", "sequential"),
                                    chunk_log_dir = NULL,
                                    chunk_name = NULL,
                                    capture_child_io = TRUE) {
@@ -853,7 +854,14 @@ packed_worker_function <- function(chunk_elements,
       write_path_resolved <- resolve_path(write_path, create = FALSE)
       dir.create(dirname(write_path_resolved), recursive = TRUE, showWarnings = FALSE)
       saveRDS(result, write_path_resolved)
-      return(write_path_resolved)
+      # Keep the public value (the result path), while retaining the outcome
+      # separately.  A path alone must not turn a serialized error into a
+      # successful packed element.
+      return(structure(
+        write_path_resolved,
+        class = c("parade_packed_written_result", "character"),
+        parade_error = inherits(result, "error") || inherits(result, "parade_error")
+      ))
     }
 
     result
@@ -899,7 +907,7 @@ packed_worker_function <- function(chunk_elements,
       element <- chunk_elements[[idx]]; global_index <- chunk_indices[idx]
       job_name <- generate_job_name(element, global_index, name_by, NULL)
       stem_val <- if (is.character(element) && length(element) == 1) tools::file_path_sans_ext(basename(element)) else job_name
-      pkgs <- unique(c("parade"))
+      pkgs <- unique(c("caravan"))
       call_args <- c(list(element), worker_args)
       if (!is.null(worker_extra_args)) call_args <- c(call_args, worker_extra_args)
       element_stem <- .element_stem(element, global_index)
@@ -912,15 +920,15 @@ packed_worker_function <- function(chunk_elements,
           tryCatch(gc(), error = function(e) NULL)
         }, add = TRUE)
         # Load packages (dev-friendly fallback for parade)
-        if ("parade" %in% pkgs) {
-          if (!require("parade", character.only = TRUE, quietly = TRUE)) {
+        if ("caravan" %in% pkgs) {
+          if (!require("caravan", character.only = TRUE, quietly = TRUE)) {
             if (!is.null(pkg_root) && requireNamespace("pkgload", quietly = TRUE)) {
               pkgload::load_all(pkg_root, quiet = TRUE)
             } else {
-              stop("Missing package: parade")
+              stop("Missing package: caravan")
             }
           }
-          pkgs <- setdiff(pkgs, "parade")
+          pkgs <- setdiff(pkgs, "caravan")
         }
         for (p in pkgs) {
           if (!require(p, character.only = TRUE, quietly = TRUE)) stop(sprintf("Missing package: %s", p))
@@ -945,7 +953,11 @@ packed_worker_function <- function(chunk_elements,
           out_path_res <- resolve_path(out_path, create = FALSE)
           dir.create(dirname(out_path_res), recursive = TRUE, showWarnings = FALSE)
           saveRDS(res, out_path_res)
-          return(out_path_res)
+          return(structure(
+            out_path_res,
+            class = c("parade_packed_written_result", "character"),
+            parade_error = inherits(res, "error") || inherits(res, "parade_error")
+          ))
         } else {
           res
         }
@@ -999,12 +1011,12 @@ packed_worker_function <- function(chunk_elements,
 
   # Detect per-element failures and persist them so that post-mortem inspection
   # works even when the user did not set .write_result. When .write_result is
-  # set, results[i] is a path string written by the inner worker; we cannot
-  # cheaply inspect error state without re-reading the file, so the per-element
-  # error.rds files are only written for the in-memory case (the most common
-  # one and the one observed in the RFE reproducer).
-  is_err <- vapply(results, function(x) inherits(x, "error") || inherits(x, "parade_error"),
-                   logical(1))
+  # set, preserve the outcome as an attribute on the returned path, so error
+  # accounting remains accurate without re-reading potentially large RDS files.
+  is_err <- vapply(results, function(x) {
+    inherits(x, "error") || inherits(x, "parade_error") ||
+      isTRUE(attr(x, "parade_error", exact = TRUE))
+  }, logical(1))
   err_indices <- which(is_err)
   if (length(err_indices) > 0L) {
     for (i in err_indices) {

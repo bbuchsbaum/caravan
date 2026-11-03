@@ -32,7 +32,7 @@
   }
   packageStartupMessage(
     "parade exports `time()` for resource profiles (deprecated) which masks `stats::time()` when attached. ",
-    "Prefer `res_time()` (or `parade::res_time()` in pipelines)."
+    "Prefer `res_time()` (or `caravan::res_time()` in pipelines)."
   )
   invisible()
 }

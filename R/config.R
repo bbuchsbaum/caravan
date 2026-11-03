@@ -1,9 +1,9 @@
 # Config: defaults & profiles ---------------------------------------------
 # JSON-based, portable; lives by default under project '.parade/parade.json' or user config.
 
-#' Locate the parade configuration file
+#' Locate the caravan configuration file
 #'
-#' Finds the appropriate location for the parade configuration file,
+#' Finds the appropriate location for the caravan configuration file,
 #' checking environment variables and standard locations.
 #'
 #' @param create_dirs Whether to create directories as needed
@@ -46,7 +46,7 @@ parade_config_path <- function(create_dirs = TRUE) {
   file.path(cfg_dir, "parade.json")
 }
 
-#' Read parade configuration
+#' Read caravan configuration
 #'
 #' @param path Optional path to config file (uses default if NULL)
 #' @return List containing configuration settings
@@ -63,7 +63,7 @@ parade_config_read <- function(path = NULL) {
   tryCatch(jsonlite::read_json(path, simplifyVector = TRUE), error = function(e) list())
 }
 
-#' Write parade configuration
+#' Write caravan configuration
 #'
 #' @param cfg Configuration list to write
 #' @param path Optional path to config file (uses default if NULL)
@@ -158,7 +158,7 @@ parade_config_write <- function(cfg, path = NULL) {
 #' Get defaults for SLURM (merged from options() and config)
 #' @param profile Character profile name; `"default"` by default. Named profiles
 #'   are user-managed and may be registered for the session or persisted in the
-#'   parade config file.
+#'   caravan config file.
 #' @return A named list of SLURM default settings for the requested profile.
 #' @examples
 #' slurm_defaults_get()
@@ -176,7 +176,7 @@ slurm_defaults_get <- function(profile = "default") {
 #' @param .list optional named list
 #' @param profile Profile name; defaults to `"default"`. Site-specific profiles
 #'   belong in user or project configuration rather than package code.
-#' @param persist Write to the parade config file if `TRUE`; otherwise update
+#' @param persist Write to the caravan config file if `TRUE`; otherwise update
 #'   only the current R session.
 #' @return The updated defaults for `profile` (invisibly).
 #' @examples
@@ -220,7 +220,7 @@ slurm_defaults_set <- function(..., .list = NULL, profile = "default", persist =
 #' template_path <- slurm_template_default()
 slurm_template_default <- function() {
   cfg <- parade_config_read()
-  tmpl <- cfg$slurm$template %||% NULL
+  tmpl <- getOption("parade.slurm.template", NULL) %||% cfg$slurm$template %||% NULL
   if (!is.null(tmpl)) return(resolve_path(tmpl, create = FALSE))
   slurm_template()
 }
@@ -232,18 +232,20 @@ slurm_template_default <- function() {
 #' @return Resolved template path (invisibly)
 #' @export
 #' @examples
-#' # Set a custom template path (temporarily, without persisting)
-#' temp_file <- tempfile(fileext = ".tmpl")
-#' writeLines("#!/bin/bash", temp_file)
-#' slurm_template_set(temp_file, persist = FALSE)
-#' 
-#' # Clean up
-#' unlink(temp_file)
+#' local({
+#'   old <- options(parade.slurm.template = NULL)
+#'   on.exit(options(old), add = TRUE)
+#'   temp_file <- tempfile(fileext = ".tmpl")
+#'   on.exit(unlink(temp_file), add = TRUE)
+#'   writeLines("#!/bin/bash", temp_file)
+#'   slurm_template_set(temp_file, persist = FALSE)
+#' })
 slurm_template_set <- function(path, persist = TRUE) {
   cfg <- parade_config_read()
   if (is.null(cfg$slurm)) cfg$slurm <- list()
   cfg$slurm$template <- path
   if (isTRUE(persist)) parade_config_write(cfg)
+  options(parade.slurm.template = path)
   invisible(resolve_path(path, create = FALSE))
 }
 
@@ -260,7 +262,7 @@ slurm_template_set <- function(path, persist = TRUE) {
 #'   retained as attributes and is not passed to the SLURM template.
 #' @details Profiles may include `whole_node = TRUE` or a positive
 #'   `cores_per_node` value. These fields describe site allocation policy for
-#'   parade's fan-out checks; they are not rendered as `#SBATCH` directives.
+#'   caravan's fan-out checks; they are not rendered as `#SBATCH` directives.
 #' @export
 #' @examples
 #' slurm_resources(list(time = "2h"), profile = "default")

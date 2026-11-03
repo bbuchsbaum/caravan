@@ -1,24 +1,23 @@
 library(testthat)
-devtools::load_all()
 
-test_that("flexible types integrate with parade::collect()", {
+test_that("flexible types integrate with caravan::collect()", {
   skip_if_not_installed("tibble")
   
-  # Test with parade::isa() validation
+  # Test with caravan::isa() validation
   grid <- data.frame(x = 1:3, seed = 100:102)  # Add seed for reproducibility
   
-  fl <- parade::flow(grid, seed_col = "seed") |>
-    parade::stage(
+  fl <- caravan::flow(grid, seed_col = "seed") |>
+    caravan::stage(
       id = "fit",
       f = function(x) {
         model <- lm(y ~ x, data = data.frame(x = 1:x, y = rnorm(x)))
         list(model = model)
       },
-      schema = parade::returns(model = parade::isa("lm"))
+      schema = caravan::returns(model = caravan::isa("lm"))
     )
   
   # Light validation (default)
-  results <- parade::collect(fl, engine = "sequential")
+  results <- caravan::collect(fl, engine = "sequential")
   expect_s3_class(results, "tbl_df")
   expect_equal(nrow(results), 3)
   expect_true(all(results$.ok))
@@ -26,17 +25,17 @@ test_that("flexible types integrate with parade::collect()", {
   expect_s3_class(results$fit.model[[1]], "lm")
   
   # Full validation - use same seed for consistency
-  fl_full <- parade::flow(grid, seed_col = "seed") |>
-    parade::stage(
+  fl_full <- caravan::flow(grid, seed_col = "seed") |>
+    caravan::stage(
       id = "fit",
       f = function(x) {
         model <- lm(y ~ x, data = data.frame(x = 1:x, y = rnorm(x)))
         list(model = model)
       },
-      schema = parade::returns(model = parade::isa("lm"))
+      schema = caravan::returns(model = caravan::isa("lm"))
     )
   
-  results_full <- parade::collect(fl_full, engine = "sequential", validate = "full")
+  results_full <- caravan::collect(fl_full, engine = "sequential", validate = "full")
   # Check both have same structure rather than exact equality
   expect_equal(nrow(results), nrow(results_full))
   expect_true(all(results_full$.ok))
@@ -48,26 +47,26 @@ test_that("flexible types catch validation errors", {
   grid <- data.frame(x = 1:2)
   
   # Stage returns wrong type
-  fl <- parade::flow(grid, error = "keep") |>
-    parade::stage(
+  fl <- caravan::flow(grid, error = "keep") |>
+    caravan::stage(
       id = "wrong",
       f = function(x) {
         list(model = data.frame(x = 1:x))  # Returns data.frame, not lm
       },
-      schema = parade::returns(model = parade::isa("lm"))
+      schema = caravan::returns(model = caravan::isa("lm"))
     )
   
-  results <- parade::collect(fl, engine = "sequential")
+  results <- caravan::collect(fl, engine = "sequential")
   expect_false(all(results$.ok))
 })
 
-test_that("parade::maybe() allows NULL values", {
+test_that("caravan::maybe() allows NULL values", {
   skip_if_not_installed("tibble")
   
   grid <- data.frame(x = c(5, 2))
   
-  fl <- parade::flow(grid) |>
-    parade::stage(
+  fl <- caravan::flow(grid) |>
+    caravan::stage(
       id = "conditional",
       f = function(x) {
         # Only fit model if x > 3
@@ -78,25 +77,25 @@ test_that("parade::maybe() allows NULL values", {
         }
         list(model = model, x = x)
       },
-      schema = parade::returns(
-        model = parade::maybe(parade::isa("lm")),
-        x = parade::int()
+      schema = caravan::returns(
+        model = caravan::maybe(caravan::isa("lm")),
+        x = caravan::int()
       )
     )
   
-  results <- parade::collect(fl, engine = "sequential")
+  results <- caravan::collect(fl, engine = "sequential")
   expect_true(all(results$.ok))
   expect_s3_class(results$conditional.model[[1]], "lm")  # x=5, should have model
   expect_null(results$conditional.model[[2]])  # x=2, should be NULL
 })
 
-test_that("parade::pred() respects validation modes", {
+test_that("caravan::pred() respects validation modes", {
   skip_if_not_installed("tibble")
   
   grid <- data.frame(x = c(10, 5))
   
-  fl <- parade::flow(grid) |>
-    parade::stage(
+  fl <- caravan::flow(grid) |>
+    caravan::stage(
       id = "check",
       f = function(x) {
         list(
@@ -104,19 +103,19 @@ test_that("parade::pred() respects validation modes", {
           sum = sum(1:x)
         )
       },
-      schema = parade::returns(
-        data = parade::pred(~ length(.) > 3, cost = "light"),  # Always runs
-        sum = parade::pred(~ . > 20, cost = "full")  # Only in full mode
+      schema = caravan::returns(
+        data = caravan::pred(~ length(.) > 3, cost = "light"),  # Always runs
+        sum = caravan::pred(~ . > 20, cost = "full")  # Only in full mode
       )
     )
   
   # Light mode - only checks length
-  results_light <- parade::collect(fl, engine = "sequential", validate = "light")
+  results_light <- caravan::collect(fl, engine = "sequential", validate = "light")
   expect_true(all(results_light$.ok))  # Both pass length check
   
   # Full mode - checks both predicates
-  fl_full <- parade::flow(grid, error = "keep") |>
-    parade::stage(
+  fl_full <- caravan::flow(grid, error = "keep") |>
+    caravan::stage(
       id = "check",
       f = function(x) {
         list(
@@ -124,12 +123,12 @@ test_that("parade::pred() respects validation modes", {
           sum = sum(1:x)
         )
       },
-      schema = parade::returns(
-        data = parade::pred(~ length(.) > 3, cost = "light"),  # Always runs
-        sum = parade::pred(~ . > 20, cost = "full")  # Only in full mode
+      schema = caravan::returns(
+        data = caravan::pred(~ length(.) > 3, cost = "light"),  # Always runs
+        sum = caravan::pred(~ . > 20, cost = "full")  # Only in full mode
       )
     )
   
-  results_full <- parade::collect(fl_full, engine = "sequential", validate = "full")
+  results_full <- caravan::collect(fl_full, engine = "sequential", validate = "full")
   expect_false(results_full$.ok[2])  # x=5: sum=15, fails >20 check
 })

@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("collect() attaches deterministic run metadata", {
   fl <- flow(tibble::tibble(x = 1:4)) |>
@@ -56,6 +55,16 @@ test_that("write_run_summary() writes json and html reports", {
 })
 
 test_that("run_summary() supports deferred handles", {
+  root <- withr::local_tempdir("caravan-run-visibility-")
+  old_paths <- getOption("parade.paths")
+  on.exit(options(parade.paths = old_paths), add = TRUE)
+  paths_init(quiet = TRUE)
+  paths_set(
+    scratch = root,
+    artifacts = file.path(root, "artifacts"),
+    registry = file.path(root, "registry")
+  )
+
   fl <- flow(tibble::tibble(x = 1:4, g = rep(c("a", "b"), each = 2))) |>
     stage("sq", function(x) list(y = as.double(x^2)), schema = returns(y = dbl())) |>
     distribute(dist_local(by = "g", within = "sequential", chunks_per_job = 1))
@@ -67,4 +76,19 @@ test_that("run_summary() supports deferred handles", {
   expect_s3_class(sm, "parade_run_summary")
   expect_equal(sm$run$run_id[[1]], d$run_id)
   expect_true(nrow(sm$run) == 1L)
+})
+
+test_that("function signatures include defaults and captured bindings", {
+  default_one <- function(x, multiplier = 1) x * multiplier
+  default_two <- function(x, multiplier = 2) x * multiplier
+  make_multiplier <- function(multiplier) function(x) x * multiplier
+
+  expect_false(identical(
+    caravan:::.parade_function_signature(default_one),
+    caravan:::.parade_function_signature(default_two)
+  ))
+  expect_false(identical(
+    caravan:::.parade_function_signature(make_multiplier(2)),
+    caravan:::.parade_function_signature(make_multiplier(3))
+  ))
 })

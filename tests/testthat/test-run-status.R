@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 setup_status_paths <- function() {
   root <- tempfile("parade_status_")
@@ -23,10 +22,10 @@ test_that("submit() writes pre-submit status snapshot and chunk plan", {
 
   handle <- submit(fl, mode = "index")
   status <- parade_status(d = handle, print = FALSE)$status
-  plan <- parade:::.parade_read_chunk_plan(handle$run_id)
+  plan <- caravan:::.parade_read_chunk_plan(handle$run_id)
 
-  expect_true(file.exists(parade:::.parade_status_path(handle$run_id, create = FALSE)))
-  expect_true(file.exists(parade:::.parade_chunk_plan_path(handle$run_id, create = FALSE)))
+  expect_true(file.exists(caravan:::.parade_status_path(handle$run_id, create = FALSE)))
+  expect_true(file.exists(caravan:::.parade_chunk_plan_path(handle$run_id, create = FALSE)))
   expect_equal(status$submission_state, "finished")
   expect_equal(status$expected_jobs, 2L)
   expect_equal(status$submitted_jobs, 2L)
@@ -40,13 +39,13 @@ test_that("partial SLURM submission persists submission failure details", {
   on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
 
   register_submit_backend("boomtest", function(handle, dist, chunks, index_dir_resolved, mode, seed_furrr, scheduling) {
-    parade:::.save_registry_files(handle)
-    parade:::.parade_status_write(
+    caravan:::.save_registry_files(handle)
+    caravan:::.parade_status_write(
       handle$run_id,
       .fields = list(
         submitted_jobs = 2L,
         missing_jobs = max(length(chunks) - 2L, 0L),
-        first_unsubmitted = parade:::.parade_chunk_lookup(handle$run_id, 3L),
+        first_unsubmitted = caravan:::.parade_chunk_lookup(handle$run_id, 3L),
         last_submit_error = "SBATCH: error: QOSMaxSubmitJobPerUserLimit"
       )
     )
@@ -81,9 +80,9 @@ test_that("run registry compacts append-only updates", {
   root <- setup_status_paths()
   on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
 
-  parade:::.run_registry_append("run-1", backend = "local", n_chunks = 10L, status = "submission_started")
-  parade:::.run_registry_update_status("run-1", "running", submitted_jobs = 10L)
-  parade:::.run_registry_update_status("run-1", "completed")
+  caravan:::.run_registry_append("run-1", backend = "local", n_chunks = 10L, status = "submission_started")
+  caravan:::.run_registry_update_status("run-1", "running", submitted_jobs = 10L)
+  caravan:::.run_registry_update_status("run-1", "completed")
 
   runs <- run_ls()
   info <- run_info("run-1")
@@ -126,8 +125,8 @@ test_that("parade_plan() and parade_status() render ASCII summaries", {
   dir.create(handle$index_dir, recursive = TRUE, showWarnings = FALSE)
   saveRDS(fl, handle$flow_path)
   saveRDS(list(list(1:2), list(3:4), list(5:6)), handle$chunks_path)
-  parade:::.parade_write_chunk_plan("run-test", parade:::.parade_chunk_plan_tbl(fl$grid, readRDS(handle$chunks_path), by_cols = "grp"))
-  parade:::.parade_status_write("run-test", .fields = list(
+  caravan:::.parade_write_chunk_plan("run-test", caravan:::.parade_chunk_plan_tbl(fl$grid, readRDS(handle$chunks_path), by_cols = "grp"))
+  caravan:::.parade_status_write("run-test", .fields = list(
     backend = "local",
     stages = c("cpca", "score"),
     by = "grp",
@@ -139,7 +138,7 @@ test_that("parade_plan() and parade_status() render ASCII summaries", {
     submitted_jobs = 1L,
     missing_jobs = 2L,
     submission_state = "incomplete",
-    first_unsubmitted = parade:::.parade_chunk_lookup("run-test", 2L)
+    first_unsubmitted = caravan:::.parade_chunk_lookup("run-test", 2L)
   ))
 
   status_lines <- capture.output(parade_status(run_id = "run-test"))

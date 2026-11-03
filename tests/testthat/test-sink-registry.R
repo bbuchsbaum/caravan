@@ -1,6 +1,5 @@
 # Test sink format registry
 library(testthat)
-devtools::load_all(".", quiet = TRUE)  # Load parade package from source
 
 test_that("register_sink_format works correctly", {
   # Register a custom format
@@ -116,7 +115,7 @@ test_that(".write_atomic_generic performs atomic writes", {
   if (file.exists(target)) unlink(target)
   
   # Perform atomic write
-  parade:::.write_atomic_generic(writer_fn, "test content", target)
+  caravan:::.write_atomic_generic(writer_fn, "test content", target)
   
   expect_true(file.exists(target))
   expect_equal(readLines(target), "test content")
@@ -129,10 +128,32 @@ test_that(".write_atomic_generic performs atomic writes", {
   unlink(target)
 })
 
+test_that("registered atomic writers leave an existing artifact intact on failure", {
+  tmp <- withr::local_tempdir()
+  target <- file.path(tmp, "artifact.fail")
+  writeLines("old", target)
+  register_sink_format(
+    "failing_atomic_test",
+    writer = function(x, path, ...) {
+      writeLines("partial", path)
+      stop("writer failed")
+    },
+    reader = readLines,
+    ext = ".fail",
+    atomic = TRUE
+  )
+  spec <- sink_spec("result", dir = tmp, format = "failing_atomic_test")
+  writer <- caravan:::.get_field_writer(spec, "result")
+
+  expect_error(writer("new", target), "writer failed")
+  expect_equal(readLines(target), "old")
+  expect_length(list.files(tmp, pattern = "\\.tmp-", full.names = TRUE), 0L)
+})
+
 test_that(".formula_to_function converts formulas correctly", {
   # Writer formula
   write_formula <- ~ write.csv(.x, .path, row.names = FALSE)
-  write_fn <- parade:::.formula_to_function(write_formula, write_mode = TRUE)
+  write_fn <- caravan:::.formula_to_function(write_formula, write_mode = TRUE)
   
   expect_type(write_fn, "closure")
   
@@ -146,7 +167,7 @@ test_that(".formula_to_function converts formulas correctly", {
   
   # Reader formula
   read_formula <- ~ read.csv(.path)
-  read_fn <- parade:::.formula_to_function(read_formula, write_mode = FALSE)
+  read_fn <- caravan:::.formula_to_function(read_formula, write_mode = FALSE)
   
   expect_type(read_fn, "closure")
   
@@ -159,7 +180,7 @@ test_that(".formula_to_function converts formulas correctly", {
 
 test_that(".get_writer_reader handles different input types", {
   # Format name
-  result <- parade:::.get_writer_reader("rds")
+  result <- caravan:::.get_writer_reader("rds")
   expect_type(result, "list")
   expect_type(result$writer, "closure")
   expect_type(result$reader, "closure")
@@ -167,20 +188,20 @@ test_that(".get_writer_reader handles different input types", {
   
   # Unknown format
   expect_error(
-    parade:::.get_writer_reader("unknown_format"),
+    caravan:::.get_writer_reader("unknown_format"),
     "Unknown format"
   )
   
   # Function
   my_writer <- function(x, path, ...) saveRDS(x, path)
-  result <- parade:::.get_writer_reader(my_writer)
+  result <- caravan:::.get_writer_reader(my_writer)
   expect_identical(result$writer, my_writer)
   expect_null(result$reader)
   expect_true(result$atomic)
   
   # Formula
   write_formula <- ~ saveRDS(.x, .path)
-  result <- parade:::.get_writer_reader(write_formula)
+  result <- caravan:::.get_writer_reader(write_formula)
   expect_type(result$writer, "closure")
   expect_null(result$reader)
   expect_true(result$atomic)

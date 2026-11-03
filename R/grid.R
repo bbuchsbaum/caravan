@@ -58,13 +58,13 @@ grid <- function(..., .filter = NULL, .add_metadata = TRUE) {
     if (inherits(.filter, "formula")) {
       # Convert formula to function
       filter_fn <- as_function(.filter)
-      keep <- apply(params, 1, function(row) {
-        do.call(filter_fn, as.list(row))
-      })
+      keep <- vapply(seq_len(nrow(params)), function(i) {
+        .grid_filter_result(do.call(filter_fn, lapply(params, `[[`, i)))
+      }, logical(1))
     } else if (is.function(.filter)) {
-      keep <- apply(params, 1, function(row) {
-        do.call(.filter, as.list(row))
-      })
+      keep <- vapply(seq_len(nrow(params)), function(i) {
+        .grid_filter_result(do.call(.filter, lapply(params, `[[`, i)))
+      }, logical(1))
     } else {
       stop(".filter must be a function or formula")
     }
@@ -89,6 +89,14 @@ grid <- function(..., .filter = NULL, .add_metadata = TRUE) {
   } else {
     params
   }
+}
+
+.grid_filter_result <- function(value) {
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    stop(".filter must return one non-missing logical value for each grid row",
+         call. = FALSE)
+  }
+  value
 }
 
 #' Create a parameter grid for flows

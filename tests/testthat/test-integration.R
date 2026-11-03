@@ -5,7 +5,6 @@ library(mockery)
 library(withr)
 
 # Load the package functions
-devtools::load_all(".", quiet = TRUE)
 
 # Helper: null-coalescing operator (from rlang) - in case not loaded
 if (!exists("%||%")) {
@@ -51,6 +50,7 @@ setup_batchtools_mocks <- function() {
   
   mock_job_table <- data.frame(
     job.id = 12345L,
+    batch.id = "98765",
     job.name = "test_job",
     status = "submitted",
     stringsAsFactors = FALSE
@@ -266,7 +266,7 @@ test_that("Job Submission + Monitoring workflow provides correct status", {
   
   metrics <- script_metrics(job)
   
-  expect_equal(metrics$job_id, "12345")
+  expect_equal(metrics$job_id, "98765")
   expect_equal(metrics$name, "test_monitor")
   expect_equal(metrics$state, "RUNNING")
   expect_equal(metrics$node, "node001")
@@ -274,7 +274,7 @@ test_that("Job Submission + Monitoring workflow provides correct status", {
   expect_equal(metrics$cpus_alloc, 4)
   
   # Step 3: Check status with script_status
-  stub(script_status, "batchtools::loadRegistry", mocks$loadRegistry)
+  stub(script_status, "bt_load_registry", mocks$loadRegistry)
   stub(script_status, "batchtools::getStatus", mocks$getStatus)
   
   status <- script_status(job)
@@ -719,7 +719,7 @@ test_that("Resource time parsing handles all formats correctly", {
   )
   
   for (tc in test_cases) {
-    result <- parade:::.parade_norm_time(tc$input)
+    result <- caravan:::.parade_norm_time(tc$input)
     expect_equal(
       result, tc$expected,
       info = paste("Input:", tc$input)

@@ -187,18 +187,35 @@ test_that("registry_clean filters correctly", {
   dir.create(job2_dir)
   
   # Test dry run
-  output <- capture.output({
-    removed <- registry_clean(
-      registry = test_dir,
-      dry_run = TRUE
-    )
-  })
+  expect_message(
+    removed <- registry_clean(registry = test_dir, dry_run = TRUE),
+    "No jobs match cleanup criteria"
+  )
   
   expect_equal(removed, 0)
   expect_true(dir.exists(job1_dir))
   expect_true(dir.exists(job2_dir))
-  expect_match(paste(output, collapse = "\n"), "Jobs to remove:.*2")
-  expect_match(paste(output, collapse = "\n"), "Dry run mode")
+})
+
+test_that("registry_clean never selects active or unknown registry entries", {
+  jobs <- data.frame(
+    name = c("done", "running", "unknown"),
+    status = c("COMPLETED", "RUNNING", "UNKNOWN"),
+    created = rep("2020-01-01 00:00:00", 3),
+    path = file.path(tempdir(), c("done", "running", "unknown")),
+    stringsAsFactors = FALSE
+  )
+
+  with_mocked_bindings(
+    {
+      output <- capture.output(registry_clean("ignored", dry_run = TRUE))
+      expect_match(paste(output, collapse = "\n"), "Jobs to remove:.*1")
+      expect_error(registry_clean("ignored", status = "RUNNING", dry_run = TRUE),
+                   "terminal states")
+    },
+    registry_ls = function(...) jobs,
+    .package = "caravan"
+  )
 })
 
 test_that("open_logs handles missing logs gracefully", {

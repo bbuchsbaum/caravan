@@ -1,5 +1,5 @@
 # Ergonomics ---------------------------------------------------------------
-#' Global parade options (get/set)
+#' Global caravan options (get/set)
 #'
 #' Set once per session to control defaults for `collect()` / `submit()`.
 #'
@@ -18,9 +18,9 @@ parade_options <- function(error = NULL, scheduling = NULL, seed_furrr = NULL, p
   options("parade.opts" = opts)
   invisible(opts)
 }
-#' Temporarily set parade options for code execution
+#' Temporarily set caravan options for code execution
 #'
-#' @param ... Named parade option values to set temporarily
+#' @param ... Named caravan option values to set temporarily
 #' @param code Code to execute with modified options
 #' @return Result of executing the code
 #' @export
@@ -49,7 +49,7 @@ with_parade_options <- function(..., code) {
 #' @examples
 #' grid <- data.frame(x = 1:3)
 #' fl <- flow(grid) |>
-#'   stage("sq", function(x) x^2, schema = returns(result = dbl()))
+#'   stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 #' explain(fl)
 #' @export
 explain.parade_flow <- function(x, ...) {
@@ -125,7 +125,7 @@ print.explained_parade_flow <- function(x, ...) {
 #' @examples
 #' grid <- data.frame(x = 1:3)
 #' fl <- flow(grid) |>
-#'   stage("sq", function(x) x^2, schema = returns(result = dbl()))
+#'   stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 #' dry_run(fl)
 #' @export
 dry_run.parade_flow <- function(x, limit = NULL, show_rows = 20L, ...) {
@@ -197,7 +197,7 @@ dry_run.parade_flow <- function(x, limit = NULL, show_rows = 20L, ...) {
 #' \donttest{
 #' grid <- data.frame(x = 1:3)
 #' fl <- flow(grid) |>
-#'   stage("sq", function(x) x^2, schema = returns(result = dbl()))
+#'   stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 #' preflight(fl)
 #' }
 #' @export

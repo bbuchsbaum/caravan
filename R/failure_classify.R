@@ -11,13 +11,13 @@
 #'   `detail` (character), and `suggestion` (character or NULL)
 #' @keywords internal
 .classify_failure <- function(diag = NULL, slurm_meta = NULL, source = "index") {
-  # 1. OOM: SLURM signal 9 or OUT_OF_MEMORY state
+  # 1. OOM: rely on the scheduler's explicit OUT_OF_MEMORY state.
 
   if (!is.null(slurm_meta)) {
     state <- slurm_meta$State %||% ""
     signal <- slurm_meta$ExitSignal %||% NA_integer_
 
-    if (grepl("OUT_OF_MEMORY", state, fixed = TRUE) || isTRUE(signal == 9L)) {
+    if (grepl("OUT_OF_MEMORY", state, fixed = TRUE)) {
       max_rss <- slurm_meta$MaxRSS %||% NA_real_
       req_mem <- slurm_meta$ReqMem %||% NA_character_
       detail <- if (!is.na(max_rss)) {
@@ -64,21 +64,26 @@
         suggestion = "Resubmit -- this is infrastructure, not your code."
       ))
     }
+    if (isTRUE(signal == 9L)) {
+      return(list(
+        class = "unknown", label = "KILLED",
+        detail = "Job received SIGKILL; the signal alone does not identify the cause.",
+        suggestion = "Check scheduler accounting and logs for the reason."
+      ))
+    }
   }
 
   # 4. R-level errors (from .diag)
+  if (!is.null(diag) && identical(diag$status, "cancelled")) {
+    return(list(
+      class = "dependency", label = "DEP",
+      detail = diag$error_message %||% "Cancelled due to upstream failure",
+      suggestion = "Fix the upstream stage error first."
+    ))
+  }
   if (!is.null(diag) && !isTRUE(diag$ok) && !isTRUE(diag$skipped)) {
     err_class <- diag$error_class %||% NA_character_
     err_msg   <- diag$error_message %||% ""
-
-    # 4a. Dependency cancellation
-    if (identical(diag$status, "cancelled")) {
-      return(list(
-        class = "dependency", label = "DEP",
-        detail = err_msg %||% "Cancelled due to upstream failure",
-        suggestion = "Fix the upstream stage error first."
-      ))
-    }
 
     # 4b. Validation/contract errors (parade-specific)
     if (!is.na(err_class) && grepl("^parade_", err_class)) {
@@ -187,8 +192,14 @@ failure_patterns <- function(..., runs = NULL) {
       tryCatch(deferred_errors(r), error = function(e) .empty_errors_tbl())
     } else if (is.character(r)) {
       # Try to load from event store
-      tryCatch(.event_read(r, types = c("chunk_failed", "stage_failed")),
-               error = function(e) NULL)
+      events <- tryCatch(.event_read(r, types = c("chunk_failed", "stage_failed")),
+                         error = function(e) list())
+      messages <- vapply(events, function(e) {
+        value <- e$error %||% e$message %||% "unknown error"
+        as.character(value)[1L]
+      }, character(1))
+      tibble::tibble(error_msg = messages,
+                     class = vapply(events, function(e) e$class %||% "unknown", character(1)))
     } else {
       .empty_errors_tbl()
     }

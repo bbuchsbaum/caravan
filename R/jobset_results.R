@@ -246,12 +246,19 @@ top.parade_job <- function(x, refresh = 2, nlog = 30, ...) {
 #'
 #' @export
 `[.parade_jobset` <- function(x, i) {
-  structure(
-    NextMethod("["),
-    class = c("parade_jobset", "list"),
-    map_call = attr(x, "map_call"),
-    timestamp = attr(x, "timestamp")
-  )
+  out <- NextMethod("[")
+  attrs <- attributes(x)
+  keep <- setdiff(names(attrs), c("names", "class"))
+  for (nm in keep) attr(out, nm) <- attrs[[nm]]
+  if (isTRUE(attr(x, "is_packed"))) {
+    chunk_counts <- vapply(out, function(job) length(job$.__chunk_indices__ %||% integer()),
+                           integer(1))
+    if (length(chunk_counts) && all(chunk_counts > 0L)) {
+      attr(out, "n_elements") <- sum(chunk_counts)
+    }
+  }
+  class(out) <- c("parade_jobset", "list")
+  out
 }
 
 #' Combine jobsets
@@ -268,12 +275,27 @@ top.parade_job <- function(x, refresh = 2, nlog = 30, ...) {
 #'
 #' @export
 c.parade_jobset <- function(...) {
-  jobs <- NextMethod("c")
-  structure(
-    jobs,
-    class = c("parade_jobset", "list"),
-    timestamp = Sys.time()
-  )
+  inputs <- list(...)
+  jobs <- unlist(inputs, recursive = FALSE, use.names = TRUE)
+  packed <- vapply(inputs, function(x) isTRUE(attr(x, "is_packed")), logical(1))
+  attrs <- list(class = c("parade_jobset", "list"), timestamp = Sys.time())
+  if (length(inputs) && all(packed)) {
+    # Preserve the packed contract only when all chunks came from packed
+    # jobsets. Mixing packed and ordinary jobs has no single element mapping.
+    first <- inputs[[1L]]
+    attrs$is_packed <- TRUE
+    for (nm in c("map_call", "error_policy", "chunk_size", "workers_per_node",
+                 "packed_log_root", "chunk_results_root", "parallel_backend",
+                 "capture_child_io")) {
+      value <- attr(first, nm, exact = TRUE)
+      if (!is.null(value)) attrs[[nm]] <- value
+    }
+    n_elements <- vapply(inputs, function(x) attr(x, "n_elements", exact = TRUE) %||% 0L,
+                         integer(1))
+    attrs$n_elements <- sum(n_elements)
+  }
+  attributes(jobs) <- c(attributes(jobs), attrs)
+  jobs
 }
 
 #' Get length of jobset

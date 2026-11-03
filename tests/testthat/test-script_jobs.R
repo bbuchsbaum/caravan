@@ -5,7 +5,6 @@ library(mockery)
 library(withr)
 
 # Load the package functions
-devtools::load_all(".", quiet = TRUE)
 
 # Helper: null-coalescing operator (from rlang) - in case not loaded
 if (!exists("%||%")) {
@@ -69,7 +68,7 @@ test_that("submit_slurm submits a script successfully", {
   mock_jt <- create_mock_job_table(job_id = 42L)
   
   stub(submit_slurm, "requireNamespace", TRUE)
-  stub(submit_slurm, "batchtools::makeClusterFunctionsSlurm", mock_cf)
+  stub(submit_slurm, "make_parade_slurm_cf", mock_cf)
   stub(submit_slurm, "bt_make_registry", function(reg_dir, cf) {
     expect_equal(reg_dir, reg_dir_norm)
     expect_false(dir.exists(reg_dir))
@@ -175,7 +174,7 @@ test_that("submit_slurm uses default values when not specified", {
   mock_jt <- create_mock_job_table()
   
   stub(submit_slurm, "requireNamespace", TRUE)
-  stub(submit_slurm, "batchtools::makeClusterFunctionsSlurm", mock_cf)
+  stub(submit_slurm, "make_parade_slurm_cf", mock_cf)
   stub(submit_slurm, "bt_make_registry", function(reg_dir, cf) {
     expect_equal(reg_dir, reg_dir_norm)
     expect_false(dir.exists(reg_dir))
@@ -258,7 +257,7 @@ test_that("submit_slurm injects monitoring env and registers script runs", {
   expect_equal(captured_env[["PARADE_RUN_ID"]], "12345678")
   expect_equal(captured_env[["PARADE_SCRIPT_NAME"]], "script_monitor")
   expect_equal(captured_env[["PARADE_SCRIPT_PATH"]], normalizePath(script_path))
-  expect_equal(captured_env[["PARADE_ARTIFACTS"]], normalizePath(file.path(root, "artifacts"), mustWork = FALSE))
+  expect_identical(normalizePath(captured_env[["PARADE_ARTIFACTS"]], mustWork = FALSE), normalizePath(file.path(root, "artifacts"), mustWork = FALSE))
 
   info <- run_info("12345678")
   expect_equal(info$status, "pending")
@@ -317,7 +316,7 @@ test_that("parade_run_script_bt emits lifecycle events and updates script run st
   test_dir <- withr::local_tempdir()
   script_path <- create_test_script(test_dir)
   run_id <- "script-runner-1"
-  parade:::.run_registry_append(
+  caravan:::.run_registry_append(
     run_id = run_id,
     backend = "slurm",
     n_chunks = 1L,
@@ -355,7 +354,7 @@ test_that("parade_run_script_bt emits lifecycle events and updates script run st
   expect_equal(result$ok, TRUE)
   expect_equal(result$status, 0L)
 
-  events <- parade:::.event_read(run_id)
+  events <- caravan:::.event_read(run_id)
   types <- vapply(events, function(ev) ev$event_type %||% "", character(1))
   expect_true("run_started" %in% types)
   expect_true("run_completed" %in% types)
@@ -385,6 +384,32 @@ test_that("parade_run_script_bt handles script failure", {
   )
 })
 
+test_that("local and batch script runners pass literal argv", {
+  test_dir <- withr::local_tempdir(pattern = "parade script ")
+  script_path <- file.path(test_dir, "script with spaces.R")
+  seen_path <- file.path(test_dir, "seen.txt")
+  marker <- file.path(test_dir, "must not exist")
+  writeLines(c(
+    "args <- commandArgs(trailingOnly = TRUE)",
+    sprintf("writeLines(args, %s)", encodeString(seen_path, quote = "\""))
+  ), script_path)
+  dangerous <- paste0("argument; touch ", shQuote(marker))
+
+  local <- submit_script_local(script_path, args = dangerous, wd = test_dir)
+  expect_identical(local$status, "COMPLETED")
+  expect_false(file.exists(marker))
+  expect_identical(readLines(seen_path), dangerous)
+
+  unlink(seen_path)
+  result <- parade_run_script_bt(
+    i = 1L, script = script_path, args = dangerous, env = character(),
+    lib_paths = character(), rscript = file.path(R.home("bin"), "Rscript"), wd = test_dir
+  )
+  expect_true(result$ok)
+  expect_false(file.exists(marker))
+  expect_identical(readLines(seen_path), dangerous)
+})
+
 test_that("script_status returns job status correctly", {
   skip_if_not_installed("batchtools")
 
@@ -410,7 +435,7 @@ test_that("script_status returns job status correctly", {
   )
   
   stub(script_status, "requireNamespace", TRUE)
-  stub(script_status, "batchtools::loadRegistry", mock_reg)
+  stub(script_status, "bt_load_registry", mock_reg)
   stub(script_status, "batchtools::getJobTable", mock_jt)
   stub(script_status, "batchtools::getStatus", mock_status)
   
@@ -451,7 +476,7 @@ test_that("script_await waits for job completion", {
   mock_reg <- create_mock_registry()
   
   stub(script_await, "requireNamespace", TRUE)
-  stub(script_await, "batchtools::loadRegistry", mock_reg)
+  stub(script_await, "bt_load_registry", mock_reg)
   stub(script_await, "batchtools::waitForJobs", TRUE)
   
   result <- script_await(job, timeout = 10, poll = 1)
@@ -483,7 +508,7 @@ test_that("script_cancel cancels running jobs", {
   mock_reg <- create_mock_registry()
   
   stub(script_cancel, "requireNamespace", TRUE)
-  stub(script_cancel, "batchtools::loadRegistry", mock_reg)
+  stub(script_cancel, "bt_load_registry", mock_reg)
   stub(script_cancel, "batchtools::findRunning", 1L)
   stub(script_cancel, "batchtools::killJobs", TRUE)
   
@@ -505,12 +530,26 @@ test_that("script_cancel handles no running jobs", {
   mock_reg <- create_mock_registry()
   
   stub(script_cancel, "requireNamespace", TRUE)
-  stub(script_cancel, "batchtools::loadRegistry", mock_reg)
+  stub(script_cancel, "bt_load_registry", mock_reg)
   stub(script_cancel, "batchtools::findRunning", integer(0))
   
   # Should not error when no jobs to kill
   result <- script_cancel(job)
   expect_identical(result, job)
+})
+
+test_that("script_cancel cancels queued jobs as well as running jobs", {
+  skip_if_not_installed("batchtools")
+  job <- structure(list(registry_dir = "/mock/registry"), class = "parade_script_job")
+  killed <- NULL
+  stub(script_cancel, "requireNamespace", TRUE)
+  stub(script_cancel, "bt_load_registry", create_mock_registry())
+  stub(script_cancel, "batchtools::findRunning", 1L)
+  stub(script_cancel, "batchtools::findQueued", 2L)
+  stub(script_cancel, "batchtools::killJobs", function(ids, reg) killed <<- ids)
+
+  script_cancel(job)
+  expect_equal(killed, c(1L, 2L))
 })
 
 test_that("script_cancel validates job handle", {
@@ -669,7 +708,7 @@ test_that("submit_slurm saves metadata files", {
   mock_jt <- create_mock_job_table(job_id = 99L)
   
   stub(submit_slurm, "requireNamespace", TRUE)
-  stub(submit_slurm, "batchtools::makeClusterFunctionsSlurm", mock_cf)
+  stub(submit_slurm, "make_parade_slurm_cf", mock_cf)
   stub(submit_slurm, "bt_make_registry", function(reg_dir, cf) {
     expect_equal(reg_dir, reg_dir_norm)
     expect_false(dir.exists(reg_dir))
@@ -732,7 +771,7 @@ test_that("submit_slurm handles custom working directory", {
   batchmap_args <- NULL
   
   stub(submit_slurm, "requireNamespace", TRUE)
-  stub(submit_slurm, "batchtools::makeClusterFunctionsSlurm", list(name = "Slurm"))
+  stub(submit_slurm, "make_parade_slurm_cf", list(name = "Slurm"))
   stub(submit_slurm, "bt_make_registry", function(reg_dir, cf) {
     dir.create(reg_dir, recursive = TRUE, showWarnings = FALSE)
     create_mock_registry()
@@ -768,7 +807,7 @@ test_that("submit_slurm handles custom environment variables", {
   batchmap_args <- NULL
   
   stub(submit_slurm, "requireNamespace", TRUE)
-  stub(submit_slurm, "batchtools::makeClusterFunctionsSlurm", list(name = "Slurm"))
+  stub(submit_slurm, "make_parade_slurm_cf", list(name = "Slurm"))
   stub(submit_slurm, "bt_make_registry", function(reg_dir, cf) {
     dir.create(reg_dir, recursive = TRUE, showWarnings = FALSE)
     create_mock_registry()
@@ -790,7 +829,8 @@ test_that("submit_slurm handles custom environment variables", {
   names(env_vars) <- c("CUSTOM_VAR", "ANOTHER_VAR")
   submit_slurm(script_path, env = env_vars, registry_dir = reg_dir)
   
-  expect_equal(batchmap_args$env, env_vars)
+  expect_equal(batchmap_args$env[names(env_vars)], env_vars)
+  expect_true(all(c("PARADE_RUN_ID", "PARADE_REGISTRY") %in% names(batchmap_args$env)))
 })
 
 test_that("submit_slurm handles custom library paths", {
@@ -806,7 +846,7 @@ test_that("submit_slurm handles custom library paths", {
   batchmap_args <- NULL
   
   stub(submit_slurm, "requireNamespace", TRUE)
-  stub(submit_slurm, "batchtools::makeClusterFunctionsSlurm", list(name = "Slurm"))
+  stub(submit_slurm, "make_parade_slurm_cf", list(name = "Slurm"))
   stub(submit_slurm, "bt_make_registry", function(reg_dir, cf) {
     dir.create(reg_dir, recursive = TRUE, showWarnings = FALSE)
     create_mock_registry()
@@ -862,6 +902,7 @@ test_that("submit_slurm requires batchtools package", {
 
   # Mock requireNamespace to return FALSE
   stub(submit_slurm, "requireNamespace", FALSE)
+  stub(bt_make_registry, "requireNamespace", FALSE)
 
   expect_error(
     submit_slurm(
@@ -873,15 +914,15 @@ test_that("submit_slurm requires batchtools package", {
   )
 })
 
-test_that("script_status requires batchtools package", {
-  job <- structure(list(kind = "script"), class = "parade_script_job")
+test_that("script_status falls back to SLURM when batchtools is unavailable", {
+  job <- structure(list(kind = "script", batch_id = "12345"), class = "parade_script_job")
   
   stub(script_status, "requireNamespace", FALSE)
+  stub(script_status, ".slurm_squeue_info", function(...) list(state = "PENDING"))
   
-  expect_error(
-    script_status(job),
-    "requires 'batchtools'"
-  )
+  result <- script_status(job)
+  expect_equal(result$pending, 1L)
+  expect_equal(result$running, 0L)
 })
 
 test_that("script_await requires batchtools package", {

@@ -2,7 +2,7 @@
 % Please edit documentation in R/distribute.R
 \name{distribute}
 \alias{distribute}
-\title{Add distribution settings to a parade flow}
+\title{Add distribution settings to a caravan flow}
 \usage{
 distribute(fl, dist, ...)
 }
@@ -23,7 +23,7 @@ when \code{dist} is a string shortcut. Ignored when \code{dist} is already a
 The input flow with distribution settings applied
 }
 \description{
-Add distribution settings to a parade flow
+Add distribution settings to a caravan flow
 }
 \examples{
 grid <- data.frame(x = 1:4, group = rep(c("A", "B"), 2))

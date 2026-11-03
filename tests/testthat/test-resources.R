@@ -1,120 +1,120 @@
-test_that("parade::omit() creates proper sentinel object", {
-  sentinel <- parade::omit()
+test_that("caravan::omit() creates proper sentinel object", {
+  sentinel <- caravan::omit()
   expect_true(inherits(sentinel, "parade_omit"))
   expect_true(as.logical(sentinel))
 })
 
 test_that(".is_missing() detects various missing values", {
   # NULL values
-  expect_true(parade:::.is_missing(NULL))
+  expect_true(caravan:::.is_missing(NULL))
   
   # Zero-length vectors
-  expect_true(parade:::.is_missing(character(0)))
-  expect_true(parade:::.is_missing(numeric(0)))
-  expect_true(parade:::.is_missing(logical(0)))
+  expect_true(caravan:::.is_missing(character(0)))
+  expect_true(caravan:::.is_missing(numeric(0)))
+  expect_true(caravan:::.is_missing(logical(0)))
   
   # Single NA values
-  expect_true(parade:::.is_missing(NA))
-  expect_true(parade:::.is_missing(NA_character_))
-  expect_true(parade:::.is_missing(NA_real_))
-  expect_true(parade:::.is_missing(NA_integer_))
+  expect_true(caravan:::.is_missing(NA))
+  expect_true(caravan:::.is_missing(NA_character_))
+  expect_true(caravan:::.is_missing(NA_real_))
+  expect_true(caravan:::.is_missing(NA_integer_))
   
-  # parade::omit() sentinel
-  expect_true(parade:::.is_missing(parade::omit()))
+  # caravan::omit() sentinel
+  expect_true(caravan:::.is_missing(caravan::omit()))
   
   # Non-missing values
-  expect_false(parade:::.is_missing(0))
-  expect_false(parade:::.is_missing(""))
-  expect_false(parade:::.is_missing(FALSE))
-  expect_false(parade:::.is_missing(c(NA, NA)))  # Multiple NAs
-  expect_false(parade:::.is_missing(c(1, 2, 3)))
-  expect_false(parade:::.is_missing("hello"))
+  expect_false(caravan:::.is_missing(0))
+  expect_false(caravan:::.is_missing(""))
+  expect_false(caravan:::.is_missing(FALSE))
+  expect_false(caravan:::.is_missing(c(NA, NA)))  # Multiple NAs
+  expect_false(caravan:::.is_missing(c(1, 2, 3)))
+  expect_false(caravan:::.is_missing("hello"))
 })
 
 test_that(".parade_norm_time() handles numeric seconds", {
   # Small values
-  expect_equal(parade:::.parade_norm_time(0), "0:00:00")
-  expect_equal(parade:::.parade_norm_time(1), "0:00:01")
-  expect_equal(parade:::.parade_norm_time(59), "0:00:59")
-  expect_equal(parade:::.parade_norm_time(60), "0:01:00")
-  expect_equal(parade:::.parade_norm_time(61), "0:01:01")
+  expect_equal(caravan:::.parade_norm_time(0), "0:00:00")
+  expect_equal(caravan:::.parade_norm_time(1), "0:00:01")
+  expect_equal(caravan:::.parade_norm_time(59), "0:00:59")
+  expect_equal(caravan:::.parade_norm_time(60), "0:01:00")
+  expect_equal(caravan:::.parade_norm_time(61), "0:01:01")
   
   # Minutes and hours
-  expect_equal(parade:::.parade_norm_time(3599), "0:59:59")
-  expect_equal(parade:::.parade_norm_time(3600), "1:00:00")
-  expect_equal(parade:::.parade_norm_time(3661), "1:01:01")
+  expect_equal(caravan:::.parade_norm_time(3599), "0:59:59")
+  expect_equal(caravan:::.parade_norm_time(3600), "1:00:00")
+  expect_equal(caravan:::.parade_norm_time(3661), "1:01:01")
   
   # Large values
-  expect_equal(parade:::.parade_norm_time(7200), "2:00:00")
-  expect_equal(parade:::.parade_norm_time(86400), "24:00:00")
-  expect_equal(parade:::.parade_norm_time(90061), "25:01:01")
+  expect_equal(caravan:::.parade_norm_time(7200), "2:00:00")
+  expect_equal(caravan:::.parade_norm_time(86400), "24:00:00")
+  expect_equal(caravan:::.parade_norm_time(90061), "25:01:01")
 })
 
-test_that("parade:::.parade_norm_time() handles HH:MM:SS format", {
+test_that("caravan:::.parade_norm_time() handles HH:MM:SS format", {
   # Standard format
-  expect_equal(parade:::.parade_norm_time("1:30:45"), "1:30:45")
-  expect_equal(parade:::.parade_norm_time("0:00:00"), "0:00:00")
-  expect_equal(parade:::.parade_norm_time("23:59:59"), "23:59:59")
+  expect_equal(caravan:::.parade_norm_time("1:30:45"), "1:30:45")
+  expect_equal(caravan:::.parade_norm_time("0:00:00"), "0:00:00")
+  expect_equal(caravan:::.parade_norm_time("23:59:59"), "23:59:59")
   
   # HH:MM format (adds :00 for seconds)
-  expect_equal(parade:::.parade_norm_time("1:30"), "1:30:00")
-  expect_equal(parade:::.parade_norm_time("0:00"), "0:00:00")
-  expect_equal(parade:::.parade_norm_time("23:59"), "23:59:00")
+  expect_equal(caravan:::.parade_norm_time("1:30"), "1:30:00")
+  expect_equal(caravan:::.parade_norm_time("0:00"), "0:00:00")
+  expect_equal(caravan:::.parade_norm_time("23:59"), "23:59:00")
   
   # With spaces (should be removed)
-  expect_equal(parade:::.parade_norm_time(" 1:30:45 "), "1:30:45")
-  expect_equal(parade:::.parade_norm_time("1 : 30 : 45"), "1:30:45")
+  expect_equal(caravan:::.parade_norm_time(" 1:30:45 "), "1:30:45")
+  expect_equal(caravan:::.parade_norm_time("1 : 30 : 45"), "1:30:45")
 })
 
-test_that("parade:::.parade_norm_time() handles human-readable formats", {
+test_that("caravan:::.parade_norm_time() handles human-readable formats", {
   # Days
-  expect_equal(parade:::.parade_norm_time("1d"), "24:00:00")
-  expect_equal(parade:::.parade_norm_time("2day"), "48:00:00")
-  expect_equal(parade:::.parade_norm_time("3days"), "72:00:00")
+  expect_equal(caravan:::.parade_norm_time("1d"), "24:00:00")
+  expect_equal(caravan:::.parade_norm_time("2day"), "48:00:00")
+  expect_equal(caravan:::.parade_norm_time("3days"), "72:00:00")
   
   # Hours
-  expect_equal(parade:::.parade_norm_time("1h"), "1:00:00")
-  expect_equal(parade:::.parade_norm_time("2hr"), "2:00:00")
-  expect_equal(parade:::.parade_norm_time("3hrs"), "3:00:00")
-  expect_equal(parade:::.parade_norm_time("4hour"), "4:00:00")
-  expect_equal(parade:::.parade_norm_time("5hours"), "5:00:00")
+  expect_equal(caravan:::.parade_norm_time("1h"), "1:00:00")
+  expect_equal(caravan:::.parade_norm_time("2hr"), "2:00:00")
+  expect_equal(caravan:::.parade_norm_time("3hrs"), "3:00:00")
+  expect_equal(caravan:::.parade_norm_time("4hour"), "4:00:00")
+  expect_equal(caravan:::.parade_norm_time("5hours"), "5:00:00")
   
   # Minutes
-  expect_equal(parade:::.parade_norm_time("1m"), "0:01:00")
-  expect_equal(parade:::.parade_norm_time("30min"), "0:30:00")
-  expect_equal(parade:::.parade_norm_time("45mins"), "0:45:00")
-  expect_equal(parade:::.parade_norm_time("90minute"), "1:30:00")
-  expect_equal(parade:::.parade_norm_time("120minutes"), "2:00:00")
+  expect_equal(caravan:::.parade_norm_time("1m"), "0:01:00")
+  expect_equal(caravan:::.parade_norm_time("30min"), "0:30:00")
+  expect_equal(caravan:::.parade_norm_time("45mins"), "0:45:00")
+  expect_equal(caravan:::.parade_norm_time("90minute"), "1:30:00")
+  expect_equal(caravan:::.parade_norm_time("120minutes"), "2:00:00")
   
   # Seconds
-  expect_equal(parade:::.parade_norm_time("1s"), "0:00:01")
-  expect_equal(parade:::.parade_norm_time("30sec"), "0:00:30")
-  expect_equal(parade:::.parade_norm_time("45secs"), "0:00:45")
-  expect_equal(parade:::.parade_norm_time("90second"), "0:01:30")
-  expect_equal(parade:::.parade_norm_time("3661seconds"), "1:01:01")
+  expect_equal(caravan:::.parade_norm_time("1s"), "0:00:01")
+  expect_equal(caravan:::.parade_norm_time("30sec"), "0:00:30")
+  expect_equal(caravan:::.parade_norm_time("45secs"), "0:00:45")
+  expect_equal(caravan:::.parade_norm_time("90second"), "0:01:30")
+  expect_equal(caravan:::.parade_norm_time("3661seconds"), "1:01:01")
   
   # Case insensitive
-  expect_equal(parade:::.parade_norm_time("1H"), "1:00:00")
-  expect_equal(parade:::.parade_norm_time("30MIN"), "0:30:00")
-  expect_equal(parade:::.parade_norm_time("2DAYS"), "48:00:00")
+  expect_equal(caravan:::.parade_norm_time("1H"), "1:00:00")
+  expect_equal(caravan:::.parade_norm_time("30MIN"), "0:30:00")
+  expect_equal(caravan:::.parade_norm_time("2DAYS"), "48:00:00")
 })
 
-test_that("parade:::.parade_norm_time() handles edge cases", {
+test_that("caravan:::.parade_norm_time() handles edge cases", {
   # NULL input
-  expect_null(parade:::.parade_norm_time(NULL))
+  expect_null(caravan:::.parade_norm_time(NULL))
   
   # Fractional hours/minutes convert to integer seconds
-  expect_equal(parade:::.parade_norm_time(1.5 * 3600), "1:30:00")  # 1.5 hours
-  expect_equal(parade:::.parade_norm_time(2.5 * 60), "0:02:30")    # 2.5 minutes
+  expect_equal(caravan:::.parade_norm_time(1.5 * 3600), "1:30:00")  # 1.5 hours
+  expect_equal(caravan:::.parade_norm_time(2.5 * 60), "0:02:30")    # 2.5 minutes
 })
 
-test_that("parade:::.parade_norm_time() throws errors for invalid formats", {
-  expect_error(parade:::.parade_norm_time("invalid"), "Cannot parse time value")
-  expect_error(parade:::.parade_norm_time("1:2:3:4"), "Cannot parse time value")
-  expect_error(parade:::.parade_norm_time("abc123"), "Cannot parse time value")
-  expect_error(parade:::.parade_norm_time("12x"), "Cannot parse time value")
-  expect_error(parade:::.parade_norm_time("h30"), "Cannot parse time value")
-  expect_error(parade:::.parade_norm_time(""), "Cannot parse time value")
+test_that("caravan:::.parade_norm_time() throws errors for invalid formats", {
+  expect_error(caravan:::.parade_norm_time("invalid"), "Cannot parse time value")
+  expect_error(caravan:::.parade_norm_time("1:2:3:4"), "Cannot parse time value")
+  expect_error(caravan:::.parade_norm_time("abc123"), "Cannot parse time value")
+  expect_error(caravan:::.parade_norm_time("12x"), "Cannot parse time value")
+  expect_error(caravan:::.parade_norm_time("h30"), "Cannot parse time value")
+  expect_error(caravan:::.parade_norm_time(""), "Cannot parse time value")
 })
 
 test_that("batch_resources() compacts missing values", {
@@ -144,11 +144,11 @@ test_that("batch_resources() compacts missing values", {
   expect_equal(result$partition, "cpu")
   expect_equal(result$mem, "4G")
   
-  # parade::omit() sentinel values are excluded
+  # caravan::omit() sentinel values are excluded
   result <- batch_resources(
-    partition = parade::omit(),
+    partition = caravan::omit(),
     time = "1:00:00",
-    nodes = parade::omit()
+    nodes = caravan::omit()
   )
   expect_equal(names(result), "time")
   expect_equal(result$time, "1:00:00")
@@ -242,18 +242,18 @@ test_that("batch_resources() handles empty and zero-length inputs", {
 })
 
 test_that("batch_resources() complex scenarios", {
-  # Mix of valid, NULL, and parade::omit() for non-time parameters
+  # Mix of valid, NULL, and caravan::omit() for non-time parameters
   result <- batch_resources(
     partition = "gpu",
-    time = parade::omit(),
+    time = caravan::omit(),
     nodes = NULL,
-    ntasks = parade::omit(),
+    ntasks = caravan::omit(),
     ntasks_per_node = 4,
     cpus_per_task = character(0),  # character(0) is considered missing, so ncpus won't override
     ncpus = 16,  # Won't be used since cpus_per_task is missing (character(0))
     mem = "64G",
     account = NA_character_,
-    qos = parade::omit(),
+    qos = caravan::omit(),
     modules = NULL,
     omp_num_threads = 8
   )
@@ -269,7 +269,7 @@ test_that("batch_resources() complex scenarios", {
 
 test_that("batch_resources() time parameter error handling", {
   # Missing values omit the flag
-  result <- batch_resources(time = parade::omit(), partition = "cpu")
+  result <- batch_resources(time = caravan::omit(), partition = "cpu")
   expect_equal(result$partition, "cpu")
   expect_false("time" %in% names(result))
 

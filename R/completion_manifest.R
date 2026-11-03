@@ -2,7 +2,7 @@
 #
 # Records {params} -> {output_paths} after each successful script_stage
 # execution, decoupling "has this been computed?" from template paths.
-# Storage: per-stage JSONL at .parade/completions/{stage_id}.jsonl
+# Storage: legacy per-stage JSONL plus atomically published record shards.
 
 .manifest_cache <- new.env(parent = emptyenv())
 
@@ -10,20 +10,32 @@
   normalizePath(path, winslash = "/", mustWork = FALSE)
 }
 
+.manifest_shard_dir <- function(path) paste0(path, ".d")
+
+.manifest_storage_signature <- function(path) {
+  shard_dir <- .manifest_shard_dir(path)
+  legacy <- if (file.exists(path)) file.info(path)[c("mtime", "size")] else NULL
+  # Shards are immutable after same-directory rename. A newly published shard
+  # changes directory metadata, so this remains O(1) rather than statting
+  # every record on each lookup. Filesystems that delay directory metadata
+  # visibility cannot provide coherent cross-host manifest reads.
+  shards <- if (dir.exists(shard_dir)) file.info(shard_dir)[c("mtime", "ctime")] else NULL
+  list(legacy = legacy, shards = shards)
+}
+
 .manifest_cache_get <- function(path) {
   key <- .manifest_cache_key(path)
-  if (!file.exists(path)) {
+  if (!file.exists(path) && !dir.exists(.manifest_shard_dir(path))) {
     if (exists(key, envir = .manifest_cache, inherits = FALSE)) {
       rm(list = key, envir = .manifest_cache, inherits = FALSE)
     }
     return(NULL)
   }
 
-  info <- file.info(path)
   cached <- .manifest_cache[[key]]
   if (is.null(cached)) return(NULL)
 
-  if (identical(cached$mtime, info$mtime) && identical(cached$size, info$size)) {
+  if (identical(cached$storage_signature, .manifest_storage_signature(path))) {
     return(cached$records)
   }
 
@@ -32,16 +44,12 @@
 }
 
 .manifest_cache_set <- function(path, records) {
-  if (!file.exists(path)) return(invisible(records))
-
-  info <- file.info(path)
   key <- .manifest_cache_key(path)
   index <- split(records, vapply(records, function(rec) {
     rec$param_hash %||% NA_character_
   }, character(1)))
   .manifest_cache[[key]] <- list(
-    mtime = info$mtime,
-    size = info$size,
+    storage_signature = .manifest_storage_signature(path),
     records = records,
     index = index
   )
@@ -50,18 +58,17 @@
 
 .manifest_cache_index <- function(path) {
   key <- .manifest_cache_key(path)
-  if (!file.exists(path)) {
+  if (!file.exists(path) && !dir.exists(.manifest_shard_dir(path))) {
     if (exists(key, envir = .manifest_cache, inherits = FALSE)) {
       rm(list = key, envir = .manifest_cache, inherits = FALSE)
     }
     return(NULL)
   }
 
-  info <- file.info(path)
   cached <- .manifest_cache[[key]]
   if (is.null(cached)) return(NULL)
 
-  if (identical(cached$mtime, info$mtime) && identical(cached$size, info$size)) {
+  if (identical(cached$storage_signature, .manifest_storage_signature(path))) {
     return(cached$index %||% NULL)
   }
 
@@ -99,19 +106,19 @@
   file.path(config_dir, "completions", paste0(stage_id, ".jsonl"))
 }
 
-#' Extract and sort grid-only params from a row
+#' Extract and sort parameters used for completion-manifest identity
 #'
-#' Drops internal columns (\code{.grid_id}, \code{.grid_hash}) and
-#' upstream \code{stage.field} columns, then sorts by name.
+#' Drops only caravan's internal bookkeeping columns. Dots are valid in user
+#' parameter names, so they must remain part of the identity rather than being
+#' mistaken for upstream stage output columns.
 #'
 #' @param row Named list of row values.
 #' @return A sorted named list of grid-only parameters.
 #' @keywords internal
 .manifest_clean_params <- function(row) {
   nms <- names(row)
-  # Drop columns starting with "." (.grid_id, .grid_hash, etc.)
-  # and upstream stage.field columns (contain a literal dot)
-  drop <- grepl("^\\.", nms) | grepl(".", nms, fixed = TRUE)
+  internal <- c(".grid_id", ".grid_hash", ".ok", ".diag")
+  drop <- nms %in% internal | grepl("^\\.run_", nms)
   params <- row[!drop]
   # Sort by name for deterministic hashing
   params[sort(names(params))]
@@ -119,18 +126,28 @@
 
 #' Append a single record to a manifest JSONL file
 #'
-#' Writes a single JSON line in append mode. For lines under PIPE_BUF
-#' (4096 bytes) this is effectively atomic on POSIX systems.
+#' Atomically publish one completion record.
+#'
+#' Each record is written to a unique temporary file and renamed within its
+#' stage directory. This avoids shared append races and retains legacy JSONL
+#' files as read-only input for backwards compatibility.
 #'
 #' @param path Path to the JSONL file.
 #' @param record A list to serialize as one JSON line.
 #' @keywords internal
 .manifest_append <- function(path, record) {
-  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  line <- jsonlite::toJSON(record, auto_unbox = TRUE, null = "null")
-  con <- file(path, open = "a")
-  on.exit(close(con))
-  writeLines(as.character(line), con)
+  shard_dir <- .manifest_shard_dir(path)
+  dir.create(shard_dir, recursive = TRUE, showWarnings = FALSE)
+  stamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6", tz = "UTC"))
+  final <- tempfile(pattern = paste0("record-", stamp, "-"),
+                    tmpdir = shard_dir, fileext = ".json")
+  tmp <- paste0(final, ".tmp")
+  on.exit(if (file.exists(tmp)) unlink(tmp), add = TRUE)
+  jsonlite::write_json(record, path = tmp, auto_unbox = TRUE, null = "null")
+  if (!isTRUE(file.rename(tmp, final))) {
+    stop("Could not atomically publish completion manifest record: ", final,
+         call. = FALSE)
+  }
   .manifest_cache_invalidate(path)
 }
 
@@ -144,18 +161,29 @@
 #' @keywords internal
 .manifest_read <- function(stage_id, config_dir = NULL) {
   path <- .manifest_path(stage_id, config_dir)
-  if (!file.exists(path)) return(list())
+  shard_dir <- .manifest_shard_dir(path)
+  if (!file.exists(path) && !dir.exists(shard_dir)) return(list())
   cached <- .manifest_cache_get(path)
   if (!is.null(cached)) return(cached)
-  lines <- readLines(path, warn = FALSE)
   records <- list()
-  for (line in lines) {
-    if (!nzchar(trimws(line))) next
-    rec <- tryCatch(
-      jsonlite::fromJSON(line, simplifyVector = FALSE),
-      error = function(e) NULL
-    )
-    if (!is.null(rec)) records <- c(records, list(rec))
+  if (file.exists(path)) {
+    lines <- readLines(path, warn = FALSE)
+    for (line in lines) {
+      if (!nzchar(trimws(line))) next
+      rec <- tryCatch(
+        jsonlite::fromJSON(line, simplifyVector = FALSE),
+        error = function(e) NULL
+      )
+      if (!is.null(rec)) records <- c(records, list(rec))
+    }
+  }
+  if (dir.exists(shard_dir)) {
+    shards <- sort(list.files(shard_dir, pattern = "\\.json$", full.names = TRUE))
+    for (shard in shards) {
+      rec <- tryCatch(jsonlite::read_json(shard, simplifyVector = FALSE),
+                      error = function(e) NULL)
+      if (!is.null(rec)) records <- c(records, list(rec))
+    }
   }
   .manifest_cache_set(path, records)
 }
@@ -189,11 +217,14 @@
   records <- .manifest_read(stage_id, config_dir)
   if (length(records) == 0L) return(NULL)
   target_hash <- digest::digest(params, algo = "sha1")
+  target_identity <- digest::digest(list(version = 2L, params = params), algo = "sha1")
   expected_names <- .manifest_output_names(produces_names)
   candidates <- .manifest_cache_index(path)[[target_hash]]
   if (is.null(candidates)) return(NULL)
   for (rec in rev(candidates)) {
-    if (identical(rec$param_hash, target_hash)) {
+    if (identical(as.integer(rec$param_schema_version), 2L) &&
+        identical(rec$param_hash, target_hash) &&
+        identical(rec$param_identity, target_identity)) {
       if (length(expected_names) > 0L) {
         recorded_names <- if (!is.null(rec$output_names)) {
           .manifest_output_names(rec$output_names)
@@ -272,9 +303,11 @@
                              config_dir = NULL) {
   record <- list(
     stage_id    = stage_id,
+    param_schema_version = 2L,
     param_cols  = sort(names(params)),
     params      = params,
     param_hash  = digest::digest(params, algo = "sha1"),
+    param_identity = digest::digest(list(version = 2L, params = params), algo = "sha1"),
     output_names = .manifest_output_names(names(output_paths)),
     output_paths = as.list(output_paths),
     completed_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
@@ -444,7 +477,7 @@ manifest_adopt <- function(stage_id, new_params, dry_run = FALSE,
 
 #' Clear completion manifest for a stage
 #'
-#' Deletes the JSONL manifest file for a stage (or all stages).
+#' Deletes completion-manifest storage for a stage (or all stages).
 #'
 #' @param stage_id Character stage identifier, or \code{NULL} to clear all.
 #' @param config_dir Config directory (defaults to \code{paths_get()$config}).
@@ -464,16 +497,21 @@ manifest_clear <- function(stage_id = NULL, config_dir = NULL) {
   if (is.null(stage_id)) {
     # Clear all
     files <- list.files(comp_dir, pattern = "\\.jsonl$", full.names = TRUE)
-    if (length(files) > 0L) {
+    shard_dirs <- list.files(comp_dir, pattern = "\\.jsonl\\.d$", full.names = TRUE)
+    targets <- c(files, shard_dirs)
+    if (length(targets) > 0L) {
       unlink(files)
+      unlink(shard_dirs, recursive = TRUE)
       .manifest_cache_invalidate()
-      message("Cleared ", length(files), " manifest file(s)")
+      message("Cleared ", length(targets), " manifest storage location(s)")
     }
-    invisible(files)
+    invisible(targets)
   } else {
     path <- .manifest_path(stage_id, config_dir)
-    if (file.exists(path)) {
-      unlink(path)
+    shard_dir <- .manifest_shard_dir(path)
+    if (file.exists(path) || dir.exists(shard_dir)) {
+      if (file.exists(path)) unlink(path)
+      if (dir.exists(shard_dir)) unlink(shard_dir, recursive = TRUE)
       .manifest_cache_invalidate(path)
       message("Cleared manifest for stage '", stage_id, "'")
     }

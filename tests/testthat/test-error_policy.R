@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("slurm_call(local) retries under error policy", {
   counter <- new.env(parent = emptyenv())

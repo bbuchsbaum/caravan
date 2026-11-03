@@ -1,5 +1,4 @@
 library(testthat)
-devtools::load_all(".", quiet = TRUE)
 
 test_that("flow_stage_resources resolves stage > flow > profile precedence", {
   withr::local_options(list(
@@ -69,7 +68,7 @@ test_that("submit resource envelope uses max stage requirements", {
     ) |>
     distribute(dist_slurm(resources = list(account = "lab", partition = "compute")))
 
-  res <- parade:::.parade_submit_slurm_resources(fl, fl$dist)
+  res <- caravan:::.parade_submit_slurm_resources(fl, fl$dist)
   expect_equal(res$cpus_per_task, 6L)
   expect_equal(res$mem, "8G")
   expect_equal(res$time, "1:00:00")
@@ -82,7 +81,7 @@ test_that("submit resource resolution preserves legacy behavior when hints are a
     stage("s1", function(x) list(y = as.double(x + 1)), schema = returns(y = dbl())) |>
     distribute(dist_slurm(resources = list(time = "2h", mem = "8G", cpus_per_task = 4L, account = "lab")))
 
-  res <- parade:::.parade_submit_slurm_resources(fl, fl$dist)
+  res <- caravan:::.parade_submit_slurm_resources(fl, fl$dist)
   expect_identical(res, fl$dist$slurm$resources)
 })
 
@@ -124,7 +123,7 @@ test_that("omit semantics remove inherited time when requested", {
     stage("s1", function(x) list(y = as.double(x + 1)), schema = returns(y = dbl())) |>
     distribute(dist_slurm(resources = list(time = "2:00:00", mem = "4G", cpus_per_task = 2L)))
 
-  res <- parade:::.parade_submit_slurm_resources(fl, fl$dist)
+  res <- caravan:::.parade_submit_slurm_resources(fl, fl$dist)
   expect_false("time" %in% names(res))
   expect_equal(res$mem, "4G")
   expect_equal(res$cpus_per_task, 2L)

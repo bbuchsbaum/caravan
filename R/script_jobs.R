@@ -55,6 +55,21 @@
   paste(libs, collapse = .Platform$path.sep)
 }
 
+# system2() invokes a shell for commands with arguments on Unix.  Quote each
+# argument at that boundary so a script path or user-supplied argument remains
+# one literal argv entry (rather than becoming shell syntax).
+.parade_system2_args <- function(args) {
+  shQuote(as.character(args))
+}
+
+.parade_restore_env <- function(values) {
+  for (nm in names(values)) {
+    if (is.na(values[[nm]])) Sys.unsetenv(nm)
+    else do.call(Sys.setenv, setNames(list(values[[nm]]), nm))
+  }
+  invisible(NULL)
+}
+
 # Generic Slurm script submission -----------------------------------------
 #' Submit an R script to SLURM or run locally
 #'
@@ -182,6 +197,9 @@ submit_slurm <- function(script,
   }
   
   # SLURM execution path
+  if (!requireNamespace("batchtools", quietly = TRUE)) {
+    stop("submit_slurm() requires 'batchtools'.", call. = FALSE)
+  }
   run_id <- substr(digest::digest(list(script, args, Sys.time())), 1, 8)
   # resolve defaults and normalize resources
   resources <- slurm_resources(resources = resources, profile = "default")
@@ -300,8 +318,13 @@ submit_slurm <- function(script,
 #' @keywords internal
 #' @export
 parade_run_script_bt <- function(i, script, args, env, lib_paths, rscript, wd) {
-  run_id <- env[["PARADE_RUN_ID"]] %||% .env_nonempty("PARADE_RUN_ID") %||% ""
-  script_name <- env[["PARADE_SCRIPT_NAME"]] %||% basename(script)
+  env_value <- function(name) {
+    if (is.null(env) || is.null(names(env))) return(NULL)
+    value <- env[name]
+    if (!length(value) || is.na(value[[1L]])) NULL else as.character(value[[1L]])
+  }
+  run_id <- env_value("PARADE_RUN_ID") %||% .env_nonempty("PARADE_RUN_ID") %||% ""
+  script_name <- env_value("PARADE_SCRIPT_NAME") %||% basename(script)
   failed <- FALSE
   emit_failure <- function(message, status = NULL) {
     if (!nzchar(run_id) || isTRUE(failed)) return(invisible(NULL))
@@ -321,28 +344,22 @@ parade_run_script_bt <- function(i, script, args, env, lib_paths, rscript, wd) {
     invisible(NULL)
   }
 
-  if (length(lib_paths)) .libPaths(unique(c(lib_paths, .libPaths())))
+  old_lib_paths <- .libPaths()
+  if (length(lib_paths)) {
+    .libPaths(unique(c(lib_paths, old_lib_paths)))
+    on.exit(.libPaths(old_lib_paths), add = TRUE)
+  }
   old <- setwd(wd); on.exit(setwd(old), add = TRUE)
   lib_env <- .parade_lib_env_value(lib_paths)
   if (nzchar(lib_env)) {
-    old_r_libs <- Sys.getenv(c("R_LIBS", "R_LIBS_USER"), names = TRUE)
+    old_r_libs <- Sys.getenv(c("R_LIBS", "R_LIBS_USER"), unset = NA_character_, names = TRUE)
     Sys.setenv(R_LIBS = lib_env, R_LIBS_USER = lib_env)
-    on.exit({
-      for (nm in names(old_r_libs)) {
-        if (!nzchar(old_r_libs[[nm]])) Sys.unsetenv(nm)
-        else do.call(Sys.setenv, setNames(list(old_r_libs[[nm]]), nm))
-      }
-    }, add = TRUE)
+    on.exit(.parade_restore_env(old_r_libs), add = TRUE)
   }
   if (length(env)) {
-    old_user_env <- Sys.getenv(names(env), names = TRUE)
+    old_user_env <- Sys.getenv(names(env), unset = NA_character_, names = TRUE)
     for (k in names(env)) do.call(Sys.setenv, setNames(list(env[[k]]), k))
-    on.exit({
-      for (nm in names(old_user_env)) {
-        if (!nzchar(old_user_env[[nm]])) Sys.unsetenv(nm)
-        else do.call(Sys.setenv, setNames(list(old_user_env[[nm]]), nm))
-      }
-    }, add = TRUE)
+    on.exit(.parade_restore_env(old_user_env), add = TRUE)
   }
 
   # Emit run_started unconditionally before tryCatch so it always precedes
@@ -360,7 +377,7 @@ parade_run_script_bt <- function(i, script, args, env, lib_paths, rscript, wd) {
   }
 
   tryCatch({
-    cmd <- c(script, args)
+    cmd <- .parade_system2_args(c(script, args))
     status <- system2(rscript, cmd, stdout = "", stderr = "", wait = TRUE)
     if (is.null(status)) status <- 0L
     if (status != 0L) {
@@ -387,7 +404,7 @@ parade_run_script_bt <- function(i, script, args, env, lib_paths, rscript, wd) {
     stop(conditionMessage(e), call. = FALSE)
   })
 }
-#' Print method for parade script jobs
+#' Print method for caravan script jobs
 #'
 #' @param x A `parade_script_job` object
 #' @param ... Additional arguments (ignored)
@@ -526,8 +543,8 @@ script_status <- function(job, detail = FALSE) {
   if (requireNamespace("batchtools", quietly = TRUE)) {
     bt_status <- tryCatch({
       reg <- tryCatch(
-        batchtools::loadRegistry(job$registry_dir, writeable = TRUE),
-        error = function(e) batchtools::loadRegistry(job$registry_dir, writeable = FALSE)
+        bt_load_registry(job$registry_dir, writeable = TRUE),
+        error = function(e) bt_load_registry(job$registry_dir, writeable = FALSE)
       )
 
       if (isTRUE(reg$writeable)) {
@@ -587,11 +604,11 @@ script_status <- function(job, detail = FALSE) {
 script_await <- function(job, timeout = Inf, poll = 10) {
   stopifnot(inherits(job, "parade_script_job"))
   if (!requireNamespace("batchtools", quietly = TRUE)) stop("script_await() requires 'batchtools'.")
-  reg <- batchtools::loadRegistry(job$registry_dir, writeable = FALSE)
+  reg <- bt_load_registry(job$registry_dir, writeable = FALSE)
   batchtools::waitForJobs(reg = reg, timeout = timeout, sleep = poll)
   invisible(job)
 }
-#' Cancel a running SLURM script job
+#' Cancel queued or running SLURM script jobs
 #'
 #' @param job A `parade_script_job` object
 #' @return The input job object (invisibly)
@@ -606,8 +623,19 @@ script_await <- function(job, timeout = Inf, poll = 10) {
 script_cancel <- function(job) {
   stopifnot(inherits(job, "parade_script_job"))
   if (!requireNamespace("batchtools", quietly = TRUE)) stop("script_cancel() requires 'batchtools'.")
-  reg <- batchtools::loadRegistry(job$registry_dir, writeable = TRUE)
-  ids <- batchtools::findRunning(reg = reg)
+  reg <- bt_load_registry(job$registry_dir, writeable = TRUE)
+  running <- batchtools::findRunning(reg = reg)
+  # A submitted job can remain queued for a long time.  It is just as
+  # cancellable as a running allocation, so include it when batchtools offers
+  # the queued-state query. batchtools versions use either `findQueued()` or
+  # `findSubmitted()` for that state.
+  queued <- tryCatch(batchtools::findQueued(reg = reg), error = function(e) integer())
+  submitted <- tryCatch(batchtools::findSubmitted(reg = reg), error = function(e) integer())
+  job_ids <- function(x) {
+    if (is.data.frame(x) && "job.id" %in% names(x)) return(x[["job.id"]])
+    x
+  }
+  ids <- unique(c(job_ids(running), job_ids(queued), job_ids(submitted)))
   if (length(ids)) batchtools::killJobs(ids, reg = reg)
   invisible(job)
 }
@@ -633,7 +661,17 @@ script_load <- function(registry_dir) {
 #' @return A tibble with registry paths and modification times
 #' @export
 #' @examples
-#' latest_jobs <- script_find_latest(n = 3)
+#' local({
+#'   old_paths <- options(parade.paths = NULL)
+#'   on.exit(options(old_paths), add = TRUE)
+#'   example_dir <- tempfile("caravan-script-jobs-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(quiet = TRUE)
+#'   paths_set(registry = file.path(example_dir, "registry"))
+#'
+#'   latest_jobs <- script_find_latest(n = 3)
+#' })
 script_find_latest <- function(n = 5, pattern = NULL) {
   root <- resolve_path("registry://")
   cands <- Sys.glob(file.path(root, "script-*"))
@@ -681,7 +719,7 @@ submit_script_local <- function(script,
   dir.create(output_dir, recursive = TRUE)
   
   # Prepare command
-  cmd_args <- c(script_path, args)
+  cmd_args <- .parade_system2_args(c(script_path, args))
   
   # Capture output files
   stdout_file <- file.path(output_dir, "stdout.txt")
@@ -689,18 +727,12 @@ submit_script_local <- function(script,
   
   # Run the script
   old_wd <- getwd()
-  old_env <- if (length(env) > 0L) Sys.getenv(names(env), names = TRUE) else character()
+  old_env <- if (length(env) > 0L) Sys.getenv(names(env), unset = NA_character_, names = TRUE) else character()
   lib_env <- .parade_lib_env_value(lib_paths)
-  old_lib_env <- if (nzchar(lib_env)) Sys.getenv(c("R_LIBS", "R_LIBS_USER"), names = TRUE) else character()
+  old_lib_env <- if (nzchar(lib_env)) Sys.getenv(c("R_LIBS", "R_LIBS_USER"), unset = NA_character_, names = TRUE) else character()
   on.exit({
-    if (length(old_env) > 0L) {
-      for (k in names(old_env)) {
-        do.call(Sys.setenv, setNames(list(old_env[[k]]), k))
-      }
-    }
-    if (length(old_lib_env) > 0L) {
-      do.call(Sys.setenv, as.list(old_lib_env))
-    }
+    if (length(old_env) > 0L) .parade_restore_env(old_env)
+    if (length(old_lib_env) > 0L) .parade_restore_env(old_lib_env)
     setwd(old_wd)
   }, add = FALSE)
   setwd(wd)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/script_stage.R
 \name{script_stage}
 \alias{script_stage}
-\title{Add a script-based stage to a parade flow}
+\title{Add a script-based stage to a caravan flow}
 \usage{
 script_stage(
   fl,
@@ -77,6 +77,9 @@ enables a completion manifest that records \code{{params} -> {output_paths}}
 after each successful execution. On subsequent runs the manifest is
 consulted first, which allows skipping even when the \code{produces} template
 has changed (e.g., after adding a new grid parameter).
+The existence check does not verify script changes, external input files,
+or output contents. Callers must invalidate or version cached results when
+those dependencies change.
 See \code{\link[=completion_manifest]{completion_manifest()}}, \code{\link[=manifest_adopt]{manifest_adopt()}}, \code{\link[=manifest_clear]{manifest_clear()}}.}
 
 \item{...}{Additional constant arguments passed through to the stage.}

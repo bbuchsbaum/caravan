@@ -1,5 +1,5 @@
 # Flow ---------------------------------------------------------------------
-#' Create a parade flow for declarative data processing
+#' Create a caravan flow for declarative data processing
 #'
 #' A flow defines a computational pipeline with typed stages that operate on
 #' a parameter grid. Each stage can depend on previous stages and produce
@@ -77,7 +77,7 @@ flow <- function(grid,
     class = "parade_flow"
   )
 }
-#' Create a parade pipeline (alias for flow)
+#' Create a caravan pipeline (alias for flow)
 #'
 #' @param grid A data frame or tibble containing parameter combinations
 #' @param seed_col Optional column name for reproducible random seeds  
@@ -123,7 +123,7 @@ pipeline <- function(grid,
     time = time
   )
 }
-#' Print method for parade flows
+#' Print method for caravan flows
 #'
 #' @param x A `parade_flow` object
 #' @param ... Additional arguments (ignored)
@@ -132,7 +132,7 @@ pipeline <- function(grid,
 #' @examples
 #' grid <- data.frame(x = 1:3)
 #' fl <- flow(grid) |>
-#'   stage("sq", function(x) x^2, schema = returns(result = dbl()))
+#'   stage("sq", function(x) list(result = x^2), schema = returns(result = dbl()))
 #' print(fl)
 #'
 #' @export
@@ -230,7 +230,7 @@ print.parade_flow <- function(x, ...) {
 
   invisible(x)
 }
-#' Add a processing stage to a parade flow
+#' Add a processing stage to a caravan flow
 #'
 #' A stage defines a computational step in the flow with typed inputs and
 #' outputs, optional dependencies, and configurable data handling options.
@@ -266,7 +266,7 @@ print.parade_flow <- function(x, ...) {
 #' @examples
 #' grid <- data.frame(x = 1:3)
 #' fl <- flow(grid) |>
-#'   stage("double", function(x) x * 2, schema = returns(result = dbl()))
+#'   stage("double", function(x) list(result = x * 2), schema = returns(result = dbl()))
 stage <- function(fl, id, f, needs = character(), schema, prefix = TRUE, sink = NULL, skip_when = NULL, hoist_struct = FALSE, inputs = NULL, input_artifacts = NULL, outputs = NULL, io_mode = c("off", "warn", "error"), retries = NULL, retry_backoff = NULL, retry_base = NULL, retry_on = NULL, resources = NULL, cpus = NULL, memory = NULL, time = NULL, ...) {
   stopifnot(inherits(fl, "parade_flow"))
   stopifnot(is.function(f))
@@ -360,7 +360,7 @@ stage_def <- function(id, f, needs = character(), schema, prefix = TRUE,
   )
 }
 
-#' Add a pre-defined stage to a parade flow
+#' Add a pre-defined stage to a caravan flow
 #'
 #' Inserts a stage created by [stage_def()] into a flow.
 #' This allows complex stages to be defined once and reused across
@@ -371,15 +371,28 @@ stage_def <- function(id, f, needs = character(), schema, prefix = TRUE,
 #' @return The input flow with the stage added.
 #' @export
 #' @examples
-#' sq <- stage_def("sq",
-#'   f = function(x) list(result = x^2),
-#'   schema = returns(result = dbl())
-#' )
+#' local({
+#'   old_paths <- options(parade.paths = NULL)
+#'   on.exit(options(old_paths), add = TRUE)
+#'   example_dir <- tempfile("caravan-add-stage-")
+#'   dir.create(example_dir)
+#'   on.exit(unlink(example_dir, recursive = TRUE), add = TRUE)
+#'   paths_init(quiet = TRUE)
+#'   paths_set(
+#'     scratch = example_dir,
+#'     artifacts = file.path(example_dir, "artifacts"),
+#'     registry = file.path(example_dir, "registry")
+#'   )
 #'
-#' grid <- data.frame(x = 1:3)
-#' result <- flow(grid) |>
-#'   add_stage(sq) |>
-#'   collect(engine = "sequential")
+#'   sq <- stage_def("sq",
+#'     f = function(x) list(result = x^2),
+#'     schema = returns(result = dbl())
+#'   )
+#'   grid <- data.frame(x = 1:3)
+#'   result <- flow(grid) |>
+#'     add_stage(sq) |>
+#'     collect(engine = "sequential")
+#' })
 add_stage <- function(fl, def) {
   stopifnot(inherits(fl, "parade_flow"))
   stopifnot(inherits(def, "parade_stage_def"))
